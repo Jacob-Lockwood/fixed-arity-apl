@@ -1,0 +1,21 @@
+{
+  "name": "fixed-arity-apl",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.4",
+    "solid-js": "^1.9.5",
+    "tailwindcss": "^4.1.4"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1",
+    "vite-plugin-solid": "^2.11.6"
+  }
+}
