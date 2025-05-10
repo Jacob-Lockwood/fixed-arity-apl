@@ -80,7 +80,6 @@ export function lex(code: string) {
 }
 
 type AstNode =
-  | void
   | { kind: "number"; value: number }
   | { kind: "string"; value: string }
   | { kind: "character"; value: number }
@@ -101,7 +100,7 @@ export class Parser {
     }
     return tok;
   }
-  primary(): AstNode {
+  primary(): AstNode | void {
     const tok = this.tok();
     if (!tok) return;
     if (tok.kind === "number") {
@@ -129,7 +128,7 @@ export class Parser {
       return this.parenthesized();
     } else if (tok.kind === "glyph") {
       this.i++;
-      const [name, { glyph, kind }] = dataBySymbol(tok.image)!;
+      const [name, { glyph, kind }] = dataBySymbol(tok.image);
       if (kind.includes("function")) {
         return { kind: "glyph reference", name };
       } else {
@@ -153,25 +152,25 @@ export class Parser {
     this.i++;
     return expr;
   }
-  monadicModifierStack(p: AstNode): AstNode {
+  monadicModifierStack(p: AstNode | void): AstNode | void {
     if (!p) return;
     while (true) {
       const tok = this.tokens[this.i];
       if (tok?.kind !== "glyph") return p;
-      const [name, data] = dataBySymbol(tok.image)!;
+      const [name, data] = dataBySymbol(tok.image);
       if (data.kind !== "monadic modifier") return p;
       this.i++;
       p = { kind: "monadic modifier", modifier: name, fn: p };
     }
   }
-  modifierExpression(): AstNode {
+  modifierExpression(): AstNode | void {
     let p = this.primary();
     if (!p) return;
     while (true) {
       p = this.monadicModifierStack(p);
       const tok = this.tokens[this.i];
       if (tok?.kind !== "glyph") return p;
-      const [name, data] = dataBySymbol(tok.image)!;
+      const [name, data] = dataBySymbol(tok.image);
       if (data.kind !== "dyadic modifier") return p;
       this.i++;
       const r = this.primary();
@@ -181,7 +180,7 @@ export class Parser {
             `dyadic modifier but got ${tok.kind}: ${tok.image}`
         );
       }
-      p = { kind: "dyadic modifier", modifier: name, fns: [p, r] };
+      p = { kind: "dyadic modifier", modifier: name, fns: [p!, r] };
     }
   }
   expression(): AstNode {
@@ -193,7 +192,7 @@ export class Parser {
     }
     return { kind: "expression", values };
   }
-  binding(): AstNode {
+  binding(): AstNode | void {
     const tok1 = this.tok();
     if (tok1?.kind !== "identifier") return;
     const tok2 = this.tokens[this.i + 1];
@@ -229,80 +228,75 @@ export class Parser {
 //* - push name to stack
 //* - visit value
 //* - set value
-
-export function visit(node: Exclude<AstNode, void>): Val {
-  if (node.kind === "number" || node.kind === "character") {
-    return { kind: node.kind, data: node.value };
-  }
-  if (node.kind === "string") {
-    return {
-      kind: "array",
-      shape: [node.value.length],
-      data: [...node.value].map<Val>((c) => ({
-        kind: "character",
-        data: c.codePointAt(0)!,
-      })),
-    };
-  }
-  if (node.kind === "glyph reference") {
-    const g = glyphs[node.name];
-    return F(g.kind === "monadic function" ? 1 : 2, g.def);
-  }
-  if (node.kind === "monadic modifier") {
-    return glyphs[node.modifier].def(visit(node.fn!));
-  }
-  if (node.kind === "dyadic modifier") {
-    return glyphs[node.modifier].def(...node.fns.map((f) => visit(f!)));
-  }
-  if (node.kind === "expression") {
-    const tines = node.values.map((n) => visit(n!));
-    for (const tine of tines) console.log(tine);
-    type Cmp = (r: Val & { kind: "function" }) => Val & { kind: "function" };
-    const fns: Cmp[] = [];
-    function fork(l: Val, g: Val & { kind: "function" }): Cmp {
-      const isF = l.kind === "function";
-      return (r) => {
-        const arity = Math.max(r.arity, isF ? l.arity : 0);
-        return F(arity, (...v) => g.data(isF ? l.data(...v) : l, r.data(...v)));
+export class Visitor {
+  visit(node: AstNode): Val {
+    if (node.kind === "number" || node.kind === "character") {
+      return { kind: node.kind, data: node.value };
+    }
+    if (node.kind === "string") {
+      return {
+        kind: "array",
+        shape: [node.value.length],
+        data: [...node.value].map<Val>((c) => ({
+          kind: "character",
+          data: c.codePointAt(0)!,
+        })),
       };
     }
-    function atop(g: Val & { kind: "function" }): Cmp {
-      console.log("atop", g);
-      if (g.arity === 2)
-        return (r) => F(r.arity, (x, y) => g.data(x, r.data(x, y)));
-      return (r) => F(r.arity, (...v) => g.data(r.data(...v)));
+    if (node.kind === "glyph reference") {
+      const g = glyphs[node.name];
+      return F(g.kind === "monadic function" ? 1 : 2, g.def);
     }
-    for (let i = 0; i < tines.length; i++) {
-      const t = tines[i];
-      const n = tines[i + 1];
-      if (n?.kind === "function" && n.arity === 2) {
-        i++;
-        fns.push(fork(t, n));
-      } else if (t.kind === "function") {
-        fns.push(atop(t));
-      } else if (i === tines.length - 1) {
-        return fns
-          .reduceRight(
-            (r, fn) => fn(r as Val & { kind: "function" }),
-            F(1, () => t)
-          )
-          .data();
-      } else throw new Error("Cannot have nilad outside of fork");
+    if (node.kind === "monadic modifier") {
+      return glyphs[node.modifier].def(this.visit(node.fn));
     }
-    return fns.reduceRight<Val>(
-      (r, fn) => fn(r as Val & { kind: "function" }),
-      F(1, (x) => x)
+    if (node.kind === "dyadic modifier") {
+      return glyphs[node.modifier].def(...node.fns.map((f) => this.visit(f)));
+    }
+    if (node.kind === "expression") {
+      const tines = node.values.map((n) => this.visit(n));
+      // for (const tine of tines) console.log(tine);
+      type Cmp = (r: Val & { kind: "function" }) => Val & { kind: "function" };
+      const fns: Cmp[] = [];
+      function fork(l: Val, g: Val & { kind: "function" }): Cmp {
+        const isF = l.kind === "function";
+        return (r) => {
+          const arity = Math.max(r.arity, isF ? l.arity : 0);
+          return F(arity, (...v) =>
+            g.data(isF ? l.data(...v) : l, r.data(...v))
+          );
+        };
+      }
+      function atop(g: Val & { kind: "function" }): Cmp {
+        console.log("atop", g);
+        if (g.arity === 2)
+          return (r) => F(r.arity, (x, y) => g.data(x, r.data(x, y)));
+        return (r) => F(r.arity, (...v) => g.data(r.data(...v)));
+      }
+      for (let i = 0; i < tines.length; i++) {
+        const t = tines[i];
+        const n = tines[i + 1];
+        if (n?.kind === "function" && n.arity === 2) {
+          i++;
+          fns.push(fork(t, n));
+        } else if (t.kind === "function") {
+          fns.push(atop(t));
+        } else if (i === tines.length - 1) {
+          const fn = fns.reduceRight(
+            (r, fn) => fn(r),
+            F(0, () => t)
+          );
+          if (fn.arity === 0) return fn.data();
+          return fn;
+        } else throw new Error("Cannot have nilad outside of fork");
+      }
+      return fns.reduceRight(
+        (r, fn) => fn(r),
+        F(1, (x) => x)
+      );
+    }
+    throw new Error(
+      "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2)
     );
   }
-  throw new Error(
-    "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2)
-  );
 }
-
-/*
-1=+/0=%⍳
-fork(1, =)
-+/
-atop(+/)
-
-*/

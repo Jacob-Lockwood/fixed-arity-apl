@@ -26,6 +26,7 @@ export function display(val: Val): string {
   if (val.kind === "number") return "" + val.data;
   if (val.kind === "character") return `'${String.fromCodePoint(val.data)}'`;
   if (val.kind === "function") return `<${val.arity === 1 ? "monad" : "dyad"}>`;
+  if (val.shape[0] === 0) return `[]`;
   if (val.shape.length === 1 && val.data.every((v) => v.kind === "character")) {
     return `"${String.fromCodePoint(...val.data.map((v) => v.data))}"`;
   }
@@ -198,5 +199,5 @@ export const glyphs: Record<string, Glyph> = {
 };
 
 export function dataBySymbol(inpglyph: string) {
-  return Object.entries(glyphs).find(([, { glyph }]) => glyph === inpglyph);
+  return Object.entries(glyphs).find(([, { glyph }]) => glyph === inpglyph)!;
 }
