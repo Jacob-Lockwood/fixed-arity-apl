@@ -8,3 +8,11 @@ body {
     transparent 2px
   );
 }
+
+@font-face {
+  font-family: Uiua386;
+  src: url("/Uiua386.ttf") format("truetype");
+}
+@theme {
+  --font-mono: Uiua386, monospace;
+}
