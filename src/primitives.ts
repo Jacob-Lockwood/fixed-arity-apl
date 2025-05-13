@@ -24,11 +24,14 @@ export const A = (shape: number[], data: Val[]): Val => ({
 
 export function display(val: Val): string {
   if (val.kind === "number") return "" + val.data;
-  if (val.kind === "character") return `'${String.fromCodePoint(val.data)}'`;
+  if (val.kind === "character") {
+    const j = JSON.stringify(String.fromCodePoint(val.data));
+    return `'${j.slice(1, -1).replace(/'/g, "\\'")}'`;
+  }
   if (val.kind === "function") return `<${val.arity === 1 ? "monad" : "dyad"}>`;
   if (val.shape[0] === 0) return `[]`;
   if (val.shape.length === 1 && val.data.every((v) => v.kind === "character")) {
-    return `"${String.fromCodePoint(...val.data.map((v) => v.data))}"`;
+    return JSON.stringify(String.fromCodePoint(...val.data.map((v) => v.data)));
   }
   if (val.shape.length === 0) return display(val.data[0]);
   const c = cells(val, -1).data as Val[];
@@ -100,6 +103,13 @@ function add(x: Val, y: Val): Val {
   }
   if (y.kind === "function") throw new Error(`Cannot add number and function`);
   return { kind: y.kind, data: x.data + y.data };
+}
+function sub(x: Val, y: Val): Val {
+  if (x.kind === "array" || y.kind === "array") return each(sub, x, y);
+  if (y.kind !== "number")
+    throw new Error(`Cannot subtract non-number from ${x.kind}`);
+  if (x.kind === "function") throw new Error(`Cannot subtract a function`);
+  return { kind: x.kind, data: x.data - y.data };
 }
 function mod(x: Val, y: Val): Val {
   if (x.kind === "array" || y.kind === "array") return each(mod, x, y);
@@ -185,6 +195,7 @@ export function compose(x: Val, y: Val) {
 export const glyphs: Record<string, Glyph> = {
   iota: { glyph: "⍳", kind: "monadic function", def: iota },
   add: { glyph: "+", kind: "dyadic function", def: add },
+  sub: { glyph: "-", kind: "dyadic function", def: sub },
   eq: { glyph: "=", kind: "dyadic function", def: eq },
   ne: { glyph: "≠", kind: "dyadic function", def: ne },
   gt: { glyph: ">", kind: "dyadic function", def: gt },

@@ -3,7 +3,7 @@ import { glyphs, dataBySymbol, Val, F } from "./primitives";
 const patterns = {
   string: /^"(\\.|[^"$])*"/,
   number: /^[`¯]?\d+(\.\d+)?/,
-  character: /^'(\\.|[^'])*'/,
+  character: /^'(\\.|[^'\\])*'/,
   identifier: /^[A-Z][A-Za-z]*/,
   comment: /^#.*/m,
   space: /^ +/,
@@ -108,13 +108,13 @@ export class Parser {
       return { kind: "number", value: Number(tok.image.replace("¯", "-")) };
     } else if (tok.kind === "string") {
       this.i++;
-      return { kind: "string", value: tok.image.slice(1, -1) };
+      return { kind: "string", value: eval(tok.image) };
     } else if (tok.kind === "character") {
       this.i++;
-      const str = tok.image.slice(1, -1) as string;
+      const str: string = eval(tok.image);
       if (str.length !== 1)
         throw new Error(
-          `Parsing error on line ${tok.line} - character literal must be one` +
+          `Parsing error on line ${tok.line} - character literal must be one ` +
             `character: ${tok.image}`
         );
       return {
