@@ -42,7 +42,7 @@ const Highlight: Component<{ tokens: readonly Token[] }> = (props) => {
 };
 
 const Kbd: ParentComponent = (props) => (
-  <kbd class="bg-green-900 px-1 font-[inherit] border-b-4 rounded-sm border-green-700">
+  <kbd class="bg-green-900 px-1 border-b-4 rounded-sm border-green-700">
     {props.children}
   </kbd>
 );
@@ -64,7 +64,7 @@ export default function App() {
           <p class="italic text-center mb-10">
             A simple APL derivative, built on fixed-arity functions
           </p>
-          <details>
+          <details open>
             <summary class="text-emerald-500 underline underline-offset-2">
               Why fixed arity
             </summary>
@@ -80,7 +80,7 @@ export default function App() {
               </a>
               , but to summarize the main points:
             </p>
-            <ul class="list-disc pl-5">
+            <ol class="list-decimal pl-8 flex flex-col gap-2">
               <li>
                 <p>
                   The overloading of glyphs to have different meanings when
@@ -101,12 +101,49 @@ export default function App() {
               <li>
                 <p>
                   In Uiua, functions having fixed arity lets modifiers have
-                  different behavior depending on the arities of their operands.
+                  different behavior depending on the arities of their operands,
+                  which is very useful in many situations. In APL and the like,
+                  this is just impossible, and the best they can do is
+                  overloading the resulting function to have different meaning
+                  if it is called monadically or dyadically, which is far more
+                  limited.
                 </p>
               </li>
-            </ul>
+              <li>
+                <p>
+                  Traditionally, trains are composed of many sequential fork
+                  operations; <code class="bg-black/30 px-1">F G H</code>{" "}
+                  represents G called with the results of F and H applied to the
+                  function's arguments. But what if you want to include monadic
+                  function applications within a train? This is a very common
+                  want, but the fork-based train construction provides no clear
+                  solution. Language designers have noticed this and attempted
+                  to remedy it: J's cap <code class="bg-black/30 px-1">[:</code>{" "}
+                  and BQN's Nothing <code class="bg-black/30 px-1">·</code>{" "}
+                  offer a concise way to insert an atop into a train, while Kap
+                  chooses to replace fork-trains with trains made solely of
+                  atops and have a special syntax for forks.
+                </p>
+                <p class="mt-2">
+                  Making functions have fixed arity actually provides a very
+                  elegant solution to this problem, without needing any extra
+                  syntax. Instead of breaking expressions into only forks, the
+                  expression can be broken into forks, atops, even hooks, based
+                  entirely on the arity of the tines. Examples of this can be
+                  found in the language reference on this page. Another nice
+                  consequence of this is that a train may have a value as its
+                  rightmost tine and still resolve to a function rather than a
+                  value.
+                </p>
+                <p class="mt-2">
+                  This element of using fixed-arity functions to write more
+                  compact trains is largely inspired by the language Jelly,
+                  which implements a variation of the same idea.
+                </p>
+              </li>
+            </ol>
           </details>
-          <details>
+          <details open class="mt-5">
             <summary class="text-emerald-500 underline underline-offset-2">
               How to use this page
             </summary>
@@ -115,13 +152,14 @@ export default function App() {
               <Kbd>Enter</Kbd> to process them. Glyphs can be entered by typing
               in the appropriate alias given in the documentation. Use{" "}
               <Kbd>Shift+Enter</Kbd> to enter a newline instead of entering the
-              code. Click on a previously entered segment to paste it into the
+              code. Click on a previously inputted segment to paste it into the
               textbox.
             </p>
           </details>
         </div>
-        <main class="lg:w-3/5 max-w-[80ch] lg:pl-10 mx-auto">
+        <main class="lg:w-3/5 max-w-[80ch] lg:pl-10 mx-auto relative">
           <Repl />
+          <h2>Language Reference</h2>
         </main>
       </div>
       <footer class="text-center mt-60 text-emerald-600 max-w-prose mx-auto flex flex-col gap-2">
@@ -209,14 +247,25 @@ function Repl() {
       class=" bg-black/20 font-mono p-4 pt-1 flex
              flex-col rounded-md"
     >
-      <div class="flex justify-between items-center">
-        <h2 class="text-sm">REPL</h2>
+      <div class="flex gap-4 items-center">
+        <h2 class="text-sm mr-auto">REPL</h2>
+        <button
+          class="text-2xl cursor-pointer"
+          title="Configuration options"
+          onClick={() => setResults([])}
+        >
+          <span class="material-symbols-outlined" title="clear repl">
+            backspace
+          </span>
+        </button>
         <button
           class="text-2xl cursor-pointer"
           title="Configuration options"
           onClick={() => setSettingsOpen((b) => !b)}
         >
-          ⚙
+          <span class="material-symbols-outlined" title="toggle settings menu">
+            settings
+          </span>
         </button>
       </div>
       <div class="h-80 flex flex-col">
@@ -272,7 +321,7 @@ function Repl() {
               ev.preventDefault();
               process(textarea.value);
               // todo: make clearing the textarea a configurable option
-              // textarea.value = "";
+              textarea.value = "";
             }
           }}
           onInput={() =>
