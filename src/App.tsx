@@ -248,7 +248,7 @@ function Repl() {
              flex-col rounded-md"
     >
       <div class="flex gap-4 items-center">
-        <h2 class="text-sm mr-auto">REPL</h2>
+        <h2 class="mr-auto">REPL</h2>
         <button
           class="text-2xl cursor-pointer"
           title="Configuration options"
