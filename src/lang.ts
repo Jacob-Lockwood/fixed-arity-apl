@@ -78,10 +78,10 @@ type AstNode =
   | { kind: "number"; value: number }
   | { kind: "string"; value: string }
   | { kind: "character"; value: number }
-  | { kind: "monadic modifier"; modifier: string; fn: AstNode }
-  | { kind: "dyadic modifier"; modifier: string; fns: [AstNode, AstNode] }
+  | { kind: "monadic modifier"; glyph: string; fn: AstNode }
+  | { kind: "dyadic modifier"; glyph: string; fns: [AstNode, AstNode] }
   | { kind: "reference"; name: string }
-  | { kind: "glyph reference"; name: string }
+  | { kind: "glyph reference"; glyph: string }
   | { kind: "binding"; name: string; declaredArity: number; value: AstNode }
   | { kind: "expression"; values: AstNode[] };
 export class Parser {
@@ -124,9 +124,9 @@ export class Parser {
     } else if (tok.kind === "glyph") {
       this.i++;
       const glyph = tok.image;
-      const { alias, kind } = glyphs[glyph];
+      const { kind } = glyphs[glyph];
       if (kind.includes("function")) {
-        return { kind: "glyph reference", name: alias };
+        return { kind: "glyph reference", glyph };
       } else {
         throw new Error(
           `Parsing error on line ${tok.line} - expected function glyph but ` +
@@ -153,10 +153,11 @@ export class Parser {
     while (true) {
       const tok = this.tokens[this.i];
       if (tok?.kind !== "glyph") return p;
-      const data = glyphs[tok.image];
-      if (data.kind !== "monadic modifier") return p;
+      const glyph = tok.image;
+      const { kind } = glyphs[glyph];
+      if (kind !== "monadic modifier") return p;
       this.i++;
-      p = { kind: "monadic modifier", modifier: data.alias, fn: p };
+      p = { kind: "monadic modifier", glyph: glyph, fn: p };
     }
   }
   modifierExpression(): AstNode | void {
@@ -166,17 +167,18 @@ export class Parser {
       p = this.monadicModifierStack(p);
       const tok = this.tokens[this.i];
       if (tok?.kind !== "glyph") return p;
-      const { alias, kind } = glyphs[tok.image];
+      const glyph = tok.image;
+      const { kind } = glyphs[glyph];
       if (kind !== "dyadic modifier") return p;
       this.i++;
       const r = this.primary();
       if (!r) {
         throw new Error(
           `Parsing error on line ${tok.line} - expected right argument to ` +
-            `dyadic modifier but got ${tok.kind}: ${tok.image}`
+            `dyadic modifier but got ${tok.kind}: ${glyph}`
         );
       }
-      p = { kind: "dyadic modifier", modifier: alias, fns: [p!, r] };
+      p = { kind: "dyadic modifier", glyph, fns: [p!, r] };
     }
   }
   expression(): AstNode {
@@ -240,14 +242,14 @@ export class Visitor {
       };
     }
     if (node.kind === "glyph reference") {
-      const g = glyphs[node.name];
+      const g = glyphs[node.glyph];
       return F(g.kind === "monadic function" ? 1 : 2, g.def);
     }
     if (node.kind === "monadic modifier") {
-      return glyphs[node.modifier].def(this.visit(node.fn));
+      return glyphs[node.glyph].def(this.visit(node.fn));
     }
     if (node.kind === "dyadic modifier") {
-      return glyphs[node.modifier].def(...node.fns.map((f) => this.visit(f)));
+      return glyphs[node.glyph].def(...node.fns.map((f) => this.visit(f)));
     }
     if (node.kind === "expression") {
       const tines = node.values.map((n) => this.visit(n));
