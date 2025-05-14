@@ -1,6 +1,3 @@
-type GlyphKind = `${"mon" | "dy"}adic ${"function" | "modifier"}`;
-type Glyph = { glyph: string; kind: GlyphKind; def: (...v: Val[]) => Val };
-
 export type Val =
   | { kind: "character"; data: number }
   | { kind: "number"; data: number }
@@ -111,6 +108,12 @@ function sub(x: Val, y: Val): Val {
   if (x.kind === "function") throw new Error(`Cannot subtract a function`);
   return { kind: x.kind, data: x.data - y.data };
 }
+function mul(x: Val, y: Val): Val {
+  if (x.kind === "array" || y.kind === "array") return each(div, x, y);
+  if (x.kind !== "number" || y.kind !== "number")
+    throw new Error(`Cannot divide ${x.kind} and ${y.kind}`);
+  return N(x.data * y.data);
+}
 function mod(x: Val, y: Val): Val {
   if (x.kind === "array" || y.kind === "array") return each(mod, x, y);
   if (x.kind !== "number" || y.kind !== "number")
@@ -191,24 +194,25 @@ export function compose(x: Val, y: Val) {
   if (x.arity === 1) return x.data(y);
   return F(1, (g) => x.data(g, y));
 }
-
+type GlyphKind = `${"mon" | "dy"}adic ${"function" | "modifier"}`;
+type Glyph = { alias: string; kind: GlyphKind; def: (...v: Val[]) => Val };
 export const glyphs: Record<string, Glyph> = {
-  iota: { glyph: "⍳", kind: "monadic function", def: iota },
-  add: { glyph: "+", kind: "dyadic function", def: add },
-  sub: { glyph: "-", kind: "dyadic function", def: sub },
-  eq: { glyph: "=", kind: "dyadic function", def: eq },
-  ne: { glyph: "≠", kind: "dyadic function", def: ne },
-  gt: { glyph: ">", kind: "dyadic function", def: gt },
-  ge: { glyph: "≥", kind: "dyadic function", def: ge },
-  lt: { glyph: "<", kind: "dyadic function", def: lt },
-  le: { glyph: "≤", kind: "dyadic function", def: le },
-  mod: { glyph: "%", kind: "dyadic function", def: mod },
-  div: { glyph: "÷", kind: "dyadic function", def: div },
-  each: { glyph: "¨", kind: "monadic modifier", def: mEach },
-  reduce: { glyph: "/", kind: "monadic modifier", def: reduce },
-  jot: { glyph: "∘", kind: "dyadic modifier", def: compose },
+  "⍳": { alias: "iot", kind: "monadic function", def: iota },
+  "=": { alias: "eq", kind: "dyadic function", def: eq },
+  "≠": { alias: "ne", kind: "dyadic function", def: ne },
+  ">": { alias: "gt", kind: "dyadic function", def: gt },
+  "≥": { alias: "ge", kind: "dyadic function", def: ge },
+  "<": { alias: "lt", kind: "dyadic function", def: lt },
+  "≤": { alias: "le", kind: "dyadic function", def: le },
+  "+": { alias: "add", kind: "dyadic function", def: add },
+  "-": { alias: "sub", kind: "dyadic function", def: sub },
+  "×": { alias: "mul", kind: "dyadic function", def: mul },
+  "÷": { alias: "div", kind: "dyadic function", def: div },
+  "%": { alias: "mod", kind: "dyadic function", def: mod },
+  "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
+  "/": { alias: "red", kind: "monadic modifier", def: reduce },
+  "∘": { alias: "jot", kind: "dyadic modifier", def: compose },
 };
-
-export function dataBySymbol(inpglyph: string) {
-  return Object.entries(glyphs).find(([, { glyph }]) => glyph === inpglyph)!;
+export function getGlyphByAlias(alias: string) {
+  return Object.keys(glyphs).find((key) => glyphs[key].alias === alias);
 }

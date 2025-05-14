@@ -1,4 +1,4 @@
-import { glyphs, dataBySymbol, Val, F } from "./primitives";
+import { glyphs, Val, F, getGlyphByAlias } from "./primitives";
 
 const patterns = {
   string: /^"(\\.|[^"$])*"/,
@@ -32,10 +32,7 @@ export function lex(code: string) {
       const execResult = regex.exec(code);
       if (!execResult) continue;
       const [match] = execResult;
-      if (
-        kind === "glyph" &&
-        !Object.values(glyphs).some(({ glyph }) => match === glyph)
-      ) {
+      if (kind === "glyph" && !(match in glyphs)) {
         throw new Error(`Unrecognized glyph ${match} on line ${line}`);
       }
       if (kind === "binding") {
@@ -48,20 +45,18 @@ export function lex(code: string) {
         while (i < match.length) {
           const two = match.slice(i, i + 2);
           const three = match.slice(i, i + 3);
+          const [g2, g3] = [two, three].map(getGlyphByAlias);
           let image: string;
-          if (two in glyphs) {
-            image = glyphs[two].glyph;
+          if (g2) {
+            image = g2;
             i += 2;
-          } else {
-            const name = Object.keys(glyphs).find(
-              (name) => name.slice(0, 3) === three
-            );
-            if (!name)
-              throw new Error(
-                `Unrecognized glyph name ${match.slice(i)} on line ${line}`
-              );
-            image = glyphs[name].glyph;
+          } else if (g3) {
+            image = g3;
             i += 3;
+          } else {
+            throw new Error(
+              `Unrecognized glyph name ${match.slice(i)} on line ${line}`
+            );
           }
           tokens.push({ kind: "glyph", image, line });
         }
@@ -128,9 +123,10 @@ export class Parser {
       return this.parenthesized();
     } else if (tok.kind === "glyph") {
       this.i++;
-      const [name, { glyph, kind }] = dataBySymbol(tok.image);
+      const glyph = tok.image;
+      const { alias, kind } = glyphs[glyph];
       if (kind.includes("function")) {
-        return { kind: "glyph reference", name };
+        return { kind: "glyph reference", name: alias };
       } else {
         throw new Error(
           `Parsing error on line ${tok.line} - expected function glyph but ` +
@@ -157,10 +153,10 @@ export class Parser {
     while (true) {
       const tok = this.tokens[this.i];
       if (tok?.kind !== "glyph") return p;
-      const [name, data] = dataBySymbol(tok.image);
+      const data = glyphs[tok.image];
       if (data.kind !== "monadic modifier") return p;
       this.i++;
-      p = { kind: "monadic modifier", modifier: name, fn: p };
+      p = { kind: "monadic modifier", modifier: data.alias, fn: p };
     }
   }
   modifierExpression(): AstNode | void {
@@ -170,8 +166,8 @@ export class Parser {
       p = this.monadicModifierStack(p);
       const tok = this.tokens[this.i];
       if (tok?.kind !== "glyph") return p;
-      const [name, data] = dataBySymbol(tok.image);
-      if (data.kind !== "dyadic modifier") return p;
+      const { alias, kind } = glyphs[tok.image];
+      if (kind !== "dyadic modifier") return p;
       this.i++;
       const r = this.primary();
       if (!r) {
@@ -180,7 +176,7 @@ export class Parser {
             `dyadic modifier but got ${tok.kind}: ${tok.image}`
         );
       }
-      p = { kind: "dyadic modifier", modifier: name, fns: [p!, r] };
+      p = { kind: "dyadic modifier", modifier: alias, fns: [p!, r] };
     }
   }
   expression(): AstNode {
