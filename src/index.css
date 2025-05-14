@@ -8,6 +8,18 @@ body {
     transparent 2px
   );
 }
+#wrapper::after {
+  content: attr(data-value) " ";
+  white-space: pre-wrap;
+  visibility: hidden;
+}
+#code-input,
+#wrapper::after {
+  padding: 1px;
+  padding-left: 8ch;
+  font: inherit;
+  grid-area: 1 / 1 / 2 / 2;
+}
 
 @font-face {
   font-family: Uiua386;
