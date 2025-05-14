@@ -1,6 +1,6 @@
 import { createSignal, For, ParentComponent, Component } from "solid-js";
 import { lex, Parser, Visitor, Token } from "./lang";
-import { dataBySymbol, display } from "./primitives";
+import { glyphs, display } from "./primitives";
 
 type Result = {
   source: string;
@@ -13,7 +13,7 @@ const Highlight: Component<{ tokens: readonly Token[] }> = (props) => {
   return props.tokens.map(({ kind, image }) => {
     switch (kind) {
       case "glyph":
-        const [name, glyph] = dataBySymbol(image);
+        const glyph = glyphs[image];
         const color = {
           "monadic function": "text-lime-400",
           "dyadic function": "text-emerald-400",
@@ -21,7 +21,7 @@ const Highlight: Component<{ tokens: readonly Token[] }> = (props) => {
           "dyadic modifier": "text-purple-300",
         }[glyph.kind];
         return (
-          <span title={name} class={color}>
+          <span title={glyph.alias} class={color}>
             {image}
           </span>
         );
