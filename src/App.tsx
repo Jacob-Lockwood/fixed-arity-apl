@@ -119,12 +119,12 @@ export default function App() {
         </div>
         <main class="lg:w-3/5 max-w-[80ch] lg:pl-10 mx-auto relative">
           <Repl />
-          <h2>Language Reference</h2>
+          {/* <h2>Language Reference</h2> */}
         </main>
       </div>
       <footer class="text-center mt-60 text-emerald-600 max-w-prose mx-auto flex flex-col gap-2">
         <p>
-          Contribute or view this page's source on{" "}
+          Contribute to or view this page's source on{" "}
           <a
             href="https://github.com/Jacob-Lockwood/fixed-arity-apl"
             class="underline"
