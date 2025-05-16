@@ -28,3 +28,4 @@ body {
 @theme {
   --font-mono: Uiua386, monospace;
 }
+@custom-variant hocus (&:hover, &:focus);

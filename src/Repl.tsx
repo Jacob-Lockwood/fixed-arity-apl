@@ -82,7 +82,7 @@ export function Repl() {
           <button
             class="cursor-pointer text-2xl"
             title="Configuration options"
-            onMouseDown={() => setSettingsOpen((b) => !b)}
+            onClick={() => setSettingsOpen((b) => !b)}
           >
             <span
               class="material-symbols-outlined"
@@ -155,14 +155,14 @@ export function Repl() {
       <div class="flex flex-wrap text-2xl">
         {Object.entries(glyphs).map(([glyph, data]) => (
           <button
-            class="group block cursor-pointer rounded-t-sm hover:bg-emerald-800"
-            onMouseDown={() => {
+            class="group hocus:bg-emerald-800 block cursor-pointer rounded-t-sm focus:outline-0"
+            onClick={() => {
               textarea.focus();
               textarea.setRangeText(glyph);
             }}
           >
             <span class="-z-10 p-2">{glyph}</span>
-            <p class="absolute z-10 hidden w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm group-hover:block">
+            <p class="group-hocus:block absolute z-10 hidden w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm">
               alias: {data.alias} <br /> {data.kind}
             </p>
           </button>
