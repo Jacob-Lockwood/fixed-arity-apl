@@ -2,26 +2,23 @@ import { ParentComponent } from "solid-js";
 import { Repl } from "./Repl";
 
 const Kbd: ParentComponent = (props) => (
-  <kbd class="bg-green-900 px-1 border-b-4 rounded-sm border-green-700">
+  <kbd class="rounded-sm border-b-4 border-green-700 bg-green-900 px-1">
     {props.children}
   </kbd>
 );
 
 export default function App() {
   return (
-    <div
-      class="p-5 sm:p-10 lg:py-20 text-emerald-300 selection:bg-green-800 flex flex-col
-             mx-auto md:w-3/4 min-h-screen bg-emerald-950/50"
-    >
+    <div class="mx-auto flex min-h-screen flex-col bg-emerald-950/50 p-5 text-emerald-300 selection:bg-green-800 sm:p-10 md:w-3/4 lg:py-20">
       <div class="lg:flex">
-        <div class="lg:w-2/5 mx-auto max-w-prose mb-10">
+        <div class="mx-auto mb-10 max-w-prose lg:w-2/5">
           <img
-            class="w-30 h-30 mx-auto"
+            class="mx-auto h-30 w-30"
             src="/APL_FIX.svg"
             alt="FIX APL logo."
           />
-          <h1 class="text-2xl text-center text-emerald-200">Fixed-arity APL</h1>
-          <p class="italic text-center mb-10">
+          <h1 class="text-center text-2xl text-emerald-200">Fixed-arity APL</h1>
+          <p class="mb-10 text-center italic">
             A simple APL derivative, built on fixed-arity functions
           </p>
           <details open>
@@ -40,7 +37,7 @@ export default function App() {
               </a>
               , but to summarize the main points:
             </p>
-            <ol class="list-decimal pl-8 flex flex-col gap-2">
+            <ol class="flex list-decimal flex-col gap-2 pl-8">
               <li>
                 <p>
                   The overloading of glyphs to have different meanings when
@@ -107,7 +104,7 @@ export default function App() {
             <summary class="text-emerald-500 underline underline-offset-2">
               How to use this page
             </summary>
-            <p class="text-emerald-300 mt-1">
+            <p class="mt-1 text-emerald-300">
               Click in the REPL textarea to write statements, and press{" "}
               <Kbd>Enter</Kbd> to process them. Glyphs can be entered by typing
               in the appropriate alias given in the documentation. Use{" "}
@@ -117,12 +114,11 @@ export default function App() {
             </p>
           </details>
         </div>
-        <main class="lg:w-3/5 max-w-[80ch] lg:pl-10 mx-auto relative">
+        <main class="mx-auto max-w-[80ch] lg:w-3/5 lg:pl-10">
           <Repl />
-          {/* <h2>Language Reference</h2> */}
         </main>
       </div>
-      <footer class="text-center mt-60 text-emerald-600 max-w-prose mx-auto flex flex-col gap-2">
+      <footer class="mx-auto mt-60 flex max-w-prose flex-col gap-2 text-center text-emerald-600">
         <p>
           Contribute to or view this page's source on{" "}
           <a
