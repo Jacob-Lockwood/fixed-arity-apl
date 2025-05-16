@@ -159,6 +159,7 @@ export function Repl() {
             onClick={() => {
               textarea.focus();
               textarea.setRangeText(glyph);
+              textarea.selectionStart++;
             }}
           >
             <span class="-z-10 p-2">{glyph}</span>

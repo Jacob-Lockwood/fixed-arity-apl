@@ -6,7 +6,7 @@ export type Val =
 
 export const F = (
   arity: number,
-  data: (...v: Val[]) => Val
+  data: (...v: Val[]) => Val,
 ): Val & { kind: "function" } => ({
   kind: "function",
   arity,
@@ -78,7 +78,7 @@ export const range = (shape: number[]): Val =>
     shape,
     Array(shape.reduce((a, b) => a * b))
       .fill(0)
-      .map((_, i) => N(i))
+      .map((_, i) => N(i)),
   );
 function iota(y: Val) {
   if (y.kind === "number") return range([y.data]);
@@ -109,9 +109,9 @@ function sub(x: Val, y: Val): Val {
   return { kind: x.kind, data: x.data - y.data };
 }
 function mul(x: Val, y: Val): Val {
-  if (x.kind === "array" || y.kind === "array") return each(div, x, y);
+  if (x.kind === "array" || y.kind === "array") return each(mul, x, y);
   if (x.kind !== "number" || y.kind !== "number")
-    throw new Error(`Cannot divide ${x.kind} and ${y.kind}`);
+    throw new Error(`Cannot multiply ${x.kind} and ${y.kind}`);
   return N(x.data * y.data);
 }
 function mod(x: Val, y: Val): Val {
