@@ -4,20 +4,19 @@ export type Val =
   | { kind: "array"; shape: number[]; data: Val[] }
   | { kind: "function"; arity: number; data: (...x: Val[]) => Val };
 
-export const F = (
-  arity: number,
-  data: (...v: Val[]) => Val,
-): Val & { kind: "function" } => ({
-  kind: "function",
-  arity,
-  data,
-});
+export const F = (arity: number, data: (...v: Val[]) => Val) =>
+  ({
+    kind: "function",
+    arity,
+    data,
+  }) satisfies Val;
 export const N = (data: number): Val => ({ kind: "number", data });
-export const A = (shape: number[], data: Val[]): Val => ({
-  kind: "array",
-  shape,
-  data,
-});
+export const A = (shape: number[], data: Val[]) =>
+  ({
+    kind: "array",
+    shape,
+    data,
+  }) satisfies Val;
 
 export function display(val: Val): string {
   if (val.kind === "number") return "" + val.data;
@@ -26,14 +25,17 @@ export function display(val: Val): string {
     return `'${j.slice(1, -1).replace(/'/g, "\\'")}'`;
   }
   if (val.kind === "function") return `<${val.arity === 1 ? "monad" : "dyad"}>`;
-  if (val.shape[0] === 0) return `[]`;
-  if (val.shape.length === 1 && val.data.every((v) => v.kind === "character")) {
-    return JSON.stringify(String.fromCodePoint(...val.data.map((v) => v.data)));
+  if (val.shape.length === 1) {
+    if (val.shape[0] !== 0 && val.data.every((v) => v.kind === "character")) {
+      return JSON.stringify(
+        String.fromCodePoint(...val.data.map((v) => v.data)),
+      );
+    }
+    return `⟨${val.data.map(display).join(" ⋄ ")}⟩`;
   }
-  if (val.shape.length === 0) return display(val.data[0]);
+  if (val.shape.includes(0)) return `[shape ${val.shape.join("×")}]`;
   const c = cells(val, -1).data as Val[];
-  return `[${c.map(display).join(" ")}]`;
-  // return JSON.stringify(val, null, 2);
+  return `[${c.map(display).join(" ⋄ ")}]`;
 }
 
 function match(a: readonly unknown[], b: readonly unknown[]) {
