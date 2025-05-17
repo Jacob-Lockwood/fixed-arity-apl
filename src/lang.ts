@@ -55,7 +55,7 @@ export function lex(code: string) {
             i += 3;
           } else {
             throw new Error(
-              `Unrecognized glyph name ${match.slice(i)} on line ${line}`
+              `Unrecognized glyph name ${match.slice(i)} on line ${line}`,
             );
           }
           tokens.push({ kind: "glyph", image, line });
@@ -68,7 +68,7 @@ export function lex(code: string) {
       continue loop;
     }
     throw new Error(
-      `Lexing error at line ${line} -- code: ` + code.slice(0, 10)
+      `Lexing error at line ${line} -- code: ` + code.slice(0, 10),
     );
   }
   return tokens;
@@ -110,7 +110,7 @@ export class Parser {
       if (str.length !== 1)
         throw new Error(
           `Parsing error on line ${tok.line} - character literal must be one ` +
-            `character: ${tok.image}`
+            `character: ${tok.image}`,
         );
       return {
         kind: "character",
@@ -130,7 +130,7 @@ export class Parser {
       } else {
         throw new Error(
           `Parsing error on line ${tok.line} - expected function glyph but ` +
-            `got modifier: ${glyph}`
+            `got modifier: ${glyph}`,
         );
       }
     }
@@ -142,7 +142,7 @@ export class Parser {
     if (tok?.kind !== "closeParen") {
       throw new Error(
         `Parsing error on line ${tok.line} - expected closing parenthesis but ` +
-          `got ${tok.kind}: ${tok.image}`
+          `got ${tok.kind}: ${tok.image}`,
       );
     }
     this.i++;
@@ -175,7 +175,7 @@ export class Parser {
       if (!r) {
         throw new Error(
           `Parsing error on line ${tok.line} - expected right argument to ` +
-            `dyadic modifier but got ${tok.kind}: ${glyph}`
+            `dyadic modifier but got ${tok.kind}: ${glyph}`,
         );
       }
       p = { kind: "dyadic modifier", glyph, fns: [p!, r] };
@@ -253,6 +253,7 @@ export class Visitor {
     }
     if (node.kind === "expression") {
       const tines = node.values.map((n) => this.visit(n));
+      if (tines.length === 1) return tines[0];
       // for (const tine of tines) console.log(tine);
       type Cmp = (r: Val & { kind: "function" }) => Val & { kind: "function" };
       const fns: Cmp[] = [];
@@ -261,7 +262,7 @@ export class Visitor {
         return (r) => {
           const arity = Math.max(r.arity, isF ? l.arity : 0);
           return F(arity, (...v) =>
-            g.data(isF ? l.data(...v) : l, r.data(...v))
+            g.data(isF ? l.data(...v) : l, r.data(...v)),
           );
         };
       }
@@ -282,7 +283,7 @@ export class Visitor {
         } else if (i === tines.length - 1) {
           const fn = fns.reduceRight(
             (r, fn) => fn(r),
-            F(0, () => t)
+            F(0, () => t),
           );
           if (fn.arity === 0) return fn.data();
           return fn;
@@ -290,11 +291,11 @@ export class Visitor {
       }
       return fns.reduceRight(
         (r, fn) => fn(r),
-        F(1, (x) => x)
+        F(1, (x) => x),
       );
     }
     throw new Error(
-      "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2)
+      "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2),
     );
   }
 }

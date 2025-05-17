@@ -10,7 +10,7 @@ export const Highlight: Component<{ tokens: readonly Token[] }> = (props) => {
         const glyph = glyphs[image];
         const color = {
           "monadic function": "text-lime-400",
-          "dyadic function": "text-emerald-400",
+          "dyadic function": "text-blue-400",
           "monadic modifier": "text-yellow-400",
           "dyadic modifier": "text-purple-300",
         }[glyph.kind];

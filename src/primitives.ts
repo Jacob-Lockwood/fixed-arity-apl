@@ -224,6 +224,9 @@ export const glyphs: Record<string, Glyph> = {
   "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
   "/": { alias: "red", kind: "monadic modifier", def: reduce },
   "\\": { alias: "sca", kind: "monadic modifier", def: scan },
+  "⊢": { alias: "rt", kind: "dyadic function", def: (_, y) => y },
+  "⊣": { alias: "lt", kind: "dyadic function", def: (x, _) => x },
+  "∥": { alias: "id", kind: "monadic function", def: (x) => x },
   "∘": { alias: "jot", kind: "dyadic modifier", def: compose },
 };
 export function getGlyphByAlias(alias: string) {
