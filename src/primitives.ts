@@ -161,12 +161,12 @@ function max(x: Val, y: Val) {
   if (gt(x, y)) return x;
   return y;
 }
-function mEach(y: Val): Val {
+function mEach(y: Val) {
   if (y.kind !== "function")
     throw new Error("Operand to each must be a function");
   return F(y.arity, (...x) => each(y.data, ...x));
 }
-function reduce(y: Val): Val {
+function reduce(y: Val) {
   if (y.kind !== "function" || y.arity !== 2)
     throw new Error("Operand to reduce must be a dyadic function");
   return F(1, (x) => {
@@ -175,7 +175,7 @@ function reduce(y: Val): Val {
     return c.data.reduce((acc, val) => y.data(acc, val));
   });
 }
-function scan(y: Val): Val {
+function scan(y: Val) {
   if (y.kind !== "function" || y.arity !== 2)
     throw new Error("Operand to scan must be a dyadic function");
   return F(1, (x) => {
@@ -186,6 +186,14 @@ function scan(y: Val): Val {
     }
     return c;
   });
+}
+function fMatch(x: Val, y: Val): Val {
+  console.log(x, y);
+  if (x.kind !== y.kind) return N(0);
+  if (x.kind !== "array") return N(x.data === y.data ? 1 : 0);
+  if (y.kind !== "array") throw new Error("unreachable");
+  if (!match(x.shape, y.shape)) return N(0);
+  return N(x.data.every((v, i) => fMatch(v, y.data[i]).data) ? 1 : 0);
 }
 function backwards(y: Val) {
   if (y.kind !== "function")
@@ -224,9 +232,10 @@ export const glyphs: Record<string, Glyph> = {
   "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
   "/": { alias: "red", kind: "monadic modifier", def: reduce },
   "\\": { alias: "sca", kind: "monadic modifier", def: scan },
-  "⊢": { alias: "rt", kind: "dyadic function", def: (_, y) => y },
-  "⊣": { alias: "lt", kind: "dyadic function", def: (x, _) => x },
-  "∥": { alias: "id", kind: "monadic function", def: (x) => x },
+  "⊢": { alias: "lft", kind: "dyadic function", def: (_, y) => y },
+  "⊣": { alias: "rgt", kind: "dyadic function", def: (x, _) => x },
+  "⋅": { alias: "id", kind: "monadic function", def: (x) => x },
+  "≡": { alias: "mat", kind: "dyadic function", def: fMatch },
   "∘": { alias: "jot", kind: "dyadic modifier", def: compose },
 };
 export function getGlyphByAlias(alias: string) {
