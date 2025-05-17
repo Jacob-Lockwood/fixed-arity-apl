@@ -254,7 +254,6 @@ export class Visitor {
     if (node.kind === "expression") {
       const tines = node.values.map((n) => this.visit(n));
       if (tines.length === 1) return tines[0];
-      // for (const tine of tines) console.log(tine);
       type Cmp = (r: Val & { kind: "function" }) => Val & { kind: "function" };
       const fns: Cmp[] = [];
       function fork(l: Val, g: Val & { kind: "function" }): Cmp {
@@ -267,9 +266,11 @@ export class Visitor {
         };
       }
       function atop(g: Val & { kind: "function" }): Cmp {
-        console.log("atop", g);
         if (g.arity === 2)
-          return (r) => F(r.arity, (x, y) => g.data(x, r.data(x, y)));
+          return (r) => {
+            if (r.arity === 0) return F(1, (x) => g.data(x, r.data()));
+            return F(r.arity, (x, y) => g.data(x, r.data(x, y)));
+          };
         return (r) => F(r.arity, (...v) => g.data(r.data(...v)));
       }
       for (let i = 0; i < tines.length; i++) {
