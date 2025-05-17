@@ -126,6 +126,21 @@ function div(x: Val, y: Val) {
     throw new Error(`Cannot divide ${x.kind} and ${y.kind}`);
   return N(x.data / y.data);
 }
+function floor(x: Val) {
+  if (x.kind === "array") return each(floor, x);
+  if (x.kind !== "number") throw new Error(`Cannot take floor of ${x.kind}`);
+  return N(Math.floor(x.data));
+}
+function round(x: Val) {
+  if (x.kind === "array") return each(round, x);
+  if (x.kind !== "number") throw new Error(`Cannot round ${x.kind}`);
+  return N(Math.round(x.data));
+}
+function ceil(x: Val) {
+  if (x.kind === "array") return each(ceil, x);
+  if (x.kind !== "number") throw new Error(`Cannot take ceiling of ${x.kind}`);
+  return N(Math.ceil(x.data));
+}
 function eq(x: Val, y: Val) {
   if (x.kind === "array" || y.kind === "array") return each(eq, x, y);
   if (x.kind === "function" || y.kind === "function") return N(0);
@@ -268,6 +283,9 @@ export const glyphs: Record<string, Glyph> = {
   "×": { alias: "mul", kind: "dyadic function", def: mul },
   "÷": { alias: "div", kind: "dyadic function", def: div },
   "%": { alias: "mod", kind: "dyadic function", def: mod },
+  "⌊": { alias: "flo", kind: "monadic function", def: floor },
+  "⁅": { alias: "rou", kind: "monadic function", def: round },
+  "⌈": { alias: "cei", kind: "monadic function", def: ceil },
   "≡": { alias: "mat", kind: "dyadic function", def: fMatch },
   "≢": { alias: "nmt", kind: "dyadic function", def: noMatch },
   "⧻": { alias: "len", kind: "monadic function", def: length },
