@@ -221,8 +221,36 @@ function length(y: Val) {
 }
 function shape(y: Val) {
   if (y.kind !== "array") return A([0], []);
-  const s = y.shape;
-  return A([s.length], s.map(N));
+  return A([y.shape.length], y.shape.map(N));
+}
+function cat(x: Val, y: Val): Val {
+  if (x.kind === "array" && y.kind === "array") {
+    const [xsh, ysh] = [x, y].map((v) => v.shape);
+    if (xsh.length === ysh.length + 1) return cat(x, A([1, ...ysh], y.data));
+    if (xsh.length + 1 === ysh.length) return cat(A([1, ...xsh], x.data), y);
+    if (xsh.length !== ysh.length || !match(xsh.slice(1), ysh.slice(1)))
+      throw new Error("Arguments to catenate must have matching cells");
+    x.shape[0] += y.shape[0];
+    x.data.push(...y.data);
+    return x;
+  } else if (x.kind === "array") {
+    const sh = [1, ...x.shape.slice(1)];
+    const d = Array(sh.reduce((a, b) => a * b))
+      .fill(0)
+      .map((_) => y);
+    return cat(x, A(sh, d));
+  } else if (y.kind === "array") {
+    const sh = [1, ...y.shape.slice(1)];
+    const d = Array(sh.reduce((a, b) => a * b))
+      .fill(0)
+      .map((_) => x);
+    return cat(A(sh, d), y);
+  } else {
+    return A([2], [x, y]);
+  }
+}
+function pair(x: Val, y: Val) {
+  return A([2], [x, y]);
 }
 
 type GlyphKind = `${"mon" | "dy"}adic ${"function" | "modifier"}`;
@@ -244,6 +272,8 @@ export const glyphs: Record<string, Glyph> = {
   "≢": { alias: "nmt", kind: "dyadic function", def: noMatch },
   "⧻": { alias: "len", kind: "monadic function", def: length },
   "△": { alias: "sha", kind: "monadic function", def: shape },
+  ",": { alias: "par", kind: "dyadic function", def: pair },
+  "⍪": { alias: "cat", kind: "dyadic function", def: cat },
   "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
   "/": { alias: "red", kind: "monadic modifier", def: reduce },
   "\\": { alias: "sca", kind: "monadic modifier", def: scan },
