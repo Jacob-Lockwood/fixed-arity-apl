@@ -3,17 +3,19 @@ import { Visitor, Token, lex, Parser } from "./lang";
 import { display, glyphs } from "./primitives";
 import { Component } from "solid-js";
 
+const glyphColors = {
+  "monadic function": "text-lime-400",
+  "dyadic function": "text-sky-400",
+  "monadic modifier": "text-yellow-400",
+  "dyadic modifier": "text-purple-300",
+};
+
 export const Highlight: Component<{ tokens: readonly Token[] }> = (props) => {
   return props.tokens.map(({ kind, image }) => {
     switch (kind) {
       case "glyph":
         const glyph = glyphs[image];
-        const color = {
-          "monadic function": "text-lime-400",
-          "dyadic function": "text-blue-400",
-          "monadic modifier": "text-yellow-400",
-          "dyadic modifier": "text-purple-300",
-        }[glyph.kind];
+        const color = glyphColors[glyph.kind];
         return (
           <span title={glyph.alias} class={color}>
             {image}
@@ -162,7 +164,7 @@ export function Repl() {
               textarea.selectionStart++;
             }}
           >
-            <span class="-z-10 p-2">{glyph}</span>
+            <span class={"-z-10 p-2 " + glyphColors[data.kind]}>{glyph}</span>
             <p class="group-hocus:block absolute z-10 hidden w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm">
               alias: {data.alias} <br /> {data.kind}
             </p>
