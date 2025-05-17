@@ -188,12 +188,14 @@ function scan(y: Val) {
   });
 }
 function fMatch(x: Val, y: Val): Val {
-  console.log(x, y);
   if (x.kind !== y.kind) return N(0);
   if (x.kind !== "array") return N(x.data === y.data ? 1 : 0);
   if (y.kind !== "array") throw new Error("unreachable");
   if (!match(x.shape, y.shape)) return N(0);
   return N(x.data.every((v, i) => fMatch(v, y.data[i]).data) ? 1 : 0);
+}
+function noMatch(x: Val, y: Val) {
+  return not(fMatch(x, y));
 }
 function backwards(y: Val) {
   if (y.kind !== "function")
@@ -214,22 +216,34 @@ export function compose(x: Val, y: Val) {
   if (x.arity === 1) return x.data(y);
   return F(1, (g) => x.data(g, y));
 }
+function length(y: Val) {
+  return N(y.kind === "array" ? (y.shape[0] ?? 0) : 0);
+}
+function shape(y: Val) {
+  if (y.kind !== "array") return A([0], []);
+  const s = y.shape;
+  return A([s.length], s.map(N));
+}
+
 type GlyphKind = `${"mon" | "dy"}adic ${"function" | "modifier"}`;
 type Glyph = { alias: string; kind: GlyphKind; def: (...v: Val[]) => Val };
 export const glyphs: Record<string, Glyph> = {
   "⍳": { alias: "iot", kind: "monadic function", def: iota },
   "=": { alias: "eq", kind: "dyadic function", def: eq },
   "≠": { alias: "ne", kind: "dyadic function", def: ne },
-  ">": { alias: "gt", kind: "dyadic function", def: gt },
-  "≥": { alias: "ge", kind: "dyadic function", def: ge },
-  "<": { alias: "lt", kind: "dyadic function", def: lt },
-  "≤": { alias: "le", kind: "dyadic function", def: le },
+  ">": { alias: "grt", kind: "dyadic function", def: gt },
+  "≥": { alias: "gte", kind: "dyadic function", def: ge },
+  "<": { alias: "les", kind: "dyadic function", def: lt },
+  "≤": { alias: "lte", kind: "dyadic function", def: le },
   "+": { alias: "add", kind: "dyadic function", def: add },
   "-": { alias: "sub", kind: "dyadic function", def: sub },
   "×": { alias: "mul", kind: "dyadic function", def: mul },
   "÷": { alias: "div", kind: "dyadic function", def: div },
   "%": { alias: "mod", kind: "dyadic function", def: mod },
   "≡": { alias: "mat", kind: "dyadic function", def: fMatch },
+  "≢": { alias: "nmt", kind: "dyadic function", def: noMatch },
+  "⧻": { alias: "len", kind: "monadic function", def: length },
+  "△": { alias: "sha", kind: "monadic function", def: shape },
   "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
   "/": { alias: "red", kind: "monadic modifier", def: reduce },
   "\\": { alias: "sca", kind: "monadic modifier", def: scan },
