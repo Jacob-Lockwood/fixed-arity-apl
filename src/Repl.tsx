@@ -143,7 +143,7 @@ export function Repl() {
                 ev.preventDefault();
                 process(textarea.value);
                 // todo: make clearing the textarea a configurable option
-                textarea.value = "";
+                textarea.parentElement!.dataset.value = textarea.value = "";
               }
             }}
             onInput={() =>
@@ -155,7 +155,7 @@ export function Repl() {
       <div class="flex flex-wrap text-2xl">
         {Object.entries(glyphs).map(([glyph, data]) => (
           <button
-            class="group hocus:bg-emerald-800 block cursor-pointer rounded-t-sm focus:outline-0"
+            class="group hocus:bg-emerald-800 block cursor-pointer rounded-t-sm select-none focus:outline-0"
             onClick={() => {
               textarea.focus();
               textarea.setRangeText(glyph);

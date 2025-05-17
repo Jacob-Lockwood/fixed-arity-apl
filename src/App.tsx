@@ -21,7 +21,7 @@ export default function App() {
           <p class="mb-10 text-center italic">
             A simple APL derivative, built on fixed-arity functions
           </p>
-          <details open>
+          <details>
             <summary class="text-emerald-500 underline underline-offset-2">
               Why fixed arity
             </summary>
@@ -100,7 +100,7 @@ export default function App() {
               </li>
             </ol>
           </details>
-          <details open class="mt-5">
+          <details class="mt-5">
             <summary class="text-emerald-500 underline underline-offset-2">
               How to use this page
             </summary>

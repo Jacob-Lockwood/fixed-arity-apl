@@ -175,6 +175,18 @@ function reduce(y: Val): Val {
     return c.data.reduce((acc, val) => y.data(acc, val));
   });
 }
+function scan(y: Val): Val {
+  if (y.kind !== "function" || y.arity !== 2)
+    throw new Error("Operand to scan must be a dyadic function");
+  return F(1, (x) => {
+    if (x.kind !== "array") throw new Error(`Cannot scan ${x.kind}`);
+    const c = cells(x, -1) as Val & { kind: "array" };
+    for (let i = 1, acc = c.data[0]; i < c.shape[0]; i++) {
+      c.data[i] = acc = y.data(acc, c.data[i]);
+    }
+    return c;
+  });
+}
 function backwards(y: Val) {
   if (y.kind !== "function")
     throw new Error("Operand to backwards must be a function");
@@ -211,6 +223,7 @@ export const glyphs: Record<string, Glyph> = {
   "%": { alias: "mod", kind: "dyadic function", def: mod },
   "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
   "/": { alias: "red", kind: "monadic modifier", def: reduce },
+  "\\": { alias: "sca", kind: "monadic modifier", def: scan },
   "∘": { alias: "jot", kind: "dyadic modifier", def: compose },
 };
 export function getGlyphByAlias(alias: string) {
