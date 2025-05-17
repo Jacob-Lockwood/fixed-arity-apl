@@ -1,4 +1,4 @@
-import { glyphs, Val, F, getGlyphByAlias } from "./primitives";
+import { glyphs, Val, F, getGlyphByAlias, A } from "./primitives";
 
 const patterns = {
   string: /^"(\\.|[^"$])*"/,
@@ -11,6 +11,7 @@ const patterns = {
   openParen: /^\(/,
   closeParen: /^\)/,
   binding: /^[:←][012⓪①②]?/,
+  ligature: /^[_‿]/,
   // openCurly: /{/y, closeCurly: /}/y, openSquare: /\[/y, closeSquare: /\]/y,
   glyphname: /^[a-z]+/,
   glyph: /^./,
@@ -40,6 +41,8 @@ export function lex(code: string) {
         tokens.push({ kind, image, line });
       } else if (kind === "number") {
         tokens.push({ kind, image: match.replace("`", "¯"), line });
+      } else if (kind === "ligature") {
+        tokens.push({ kind, image: match.replace("_", "‿"), line });
       } else if (kind === "glyphname") {
         let i = 0;
         while (i < match.length) {
@@ -83,11 +86,12 @@ type AstNode =
   | { kind: "reference"; name: string }
   | { kind: "glyph reference"; glyph: string }
   | { kind: "binding"; name: string; declaredArity: number; value: AstNode }
-  | { kind: "expression"; values: AstNode[] };
+  | { kind: "expression"; values: AstNode[] }
+  | { kind: "strand"; values: AstNode[] };
 export class Parser {
   private i = 0;
   constructor(private tokens: Token[]) {}
-  tok() {
+  tok(): Token | undefined {
     let tok = this.tokens[this.i];
     while (tok?.kind === "newline") {
       this.i++;
@@ -135,7 +139,7 @@ export class Parser {
       }
     }
   }
-  parenthesized(): AstNode {
+  parenthesized() {
     this.i++;
     const expr = this.expression();
     const tok = this.tokens[this.i];
@@ -148,7 +152,7 @@ export class Parser {
     this.i++;
     return expr;
   }
-  monadicModifierStack(p: AstNode | void): AstNode | void {
+  monadicModifierStack(p: AstNode | void) {
     if (!p) return;
     while (true) {
       const tok = this.tokens[this.i];
@@ -160,7 +164,7 @@ export class Parser {
       p = { kind: "monadic modifier", glyph: glyph, fn: p };
     }
   }
-  modifierExpression(): AstNode | void {
+  modifierExpression() {
     let p = this.primary();
     if (!p) return;
     while (true) {
@@ -181,10 +185,29 @@ export class Parser {
       p = { kind: "dyadic modifier", glyph, fns: [p!, r] };
     }
   }
+  strand(): AstNode | void {
+    const values: AstNode[] = [];
+    let m = this.modifierExpression();
+    while (m) {
+      values.push(m);
+      const t = this.tok();
+      if (t?.kind !== "ligature") break;
+      this.i++;
+      m = this.modifierExpression();
+      if (!m) {
+        throw new Error(
+          `Parsing error on line ${t.line} - strand cannot end with a ligature`,
+        );
+      }
+    }
+    if (values.length === 0) return;
+    if (values.length === 1) return values[0];
+    return { kind: "strand", values };
+  }
   expression(): AstNode {
     const values: AstNode[] = [];
     while (true) {
-      const m = this.modifierExpression();
+      const m = this.strand();
       if (!m) break;
       values.push(m);
     }
@@ -293,6 +316,12 @@ export class Visitor {
       return fns.reduceRight(
         (r, fn) => fn(r),
         F(1, (x) => x),
+      );
+    }
+    if (node.kind === "strand") {
+      return A(
+        [node.values.length],
+        node.values.map((v) => this.visit(v)),
       );
     }
     throw new Error(
