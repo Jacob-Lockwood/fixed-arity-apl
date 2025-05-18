@@ -38,7 +38,7 @@ export function display(val: Val): string {
   return `[${c.map(display).join(" ⋄ ")}]`;
 }
 
-function match(a: readonly unknown[], b: readonly unknown[]) {
+export function match(a: readonly unknown[], b: readonly unknown[]) {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 function each(fn: (...x: Val[]) => Val, ...x: Val[]): Val {

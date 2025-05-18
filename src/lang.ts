@@ -1,17 +1,22 @@
-import { glyphs, Val, F, getGlyphByAlias, A } from "./primitives";
+import { glyphs, Val, F, getGlyphByAlias, A, match } from "./primitives";
 
 const patterns = {
   string: /^"(\\.|[^"$])*"/,
-  number: /^[`¯]?\d+(\.\d+)?/,
+  number: /^([`¯]|neg)?\d+(\.\d+)?/,
   character: /^'(\\.|[^'\\])*'/,
   identifier: /^[A-Z][A-Za-z]*/,
   comment: /^#.*/m,
   space: /^ +/,
   newline: /^$/m,
-  openParen: /^\(/,
-  closeParen: /^\)/,
+  lParen: /^\(/,
+  rParen: /^\)/,
   binding: /^[:←][012⓪①②]?/,
   ligature: /^[_‿]/,
+  lSquare: /^\[/,
+  rSquare: /^\]/,
+  lAngle: /^[{⟨]/,
+  rAngle: /^[}⟩]/,
+  diamond: /^[;⋄]/,
   // openCurly: /{/y, closeCurly: /}/y, openSquare: /\[/y, closeSquare: /\]/y,
   glyphname: /^[a-z]+/,
   glyph: /^./,
@@ -40,9 +45,15 @@ export function lex(code: string) {
         const image = match.replace(":", "←").replace(/\d/, (a) => "⓪①②"[+a]);
         tokens.push({ kind, image, line });
       } else if (kind === "number") {
-        tokens.push({ kind, image: match.replace("`", "¯"), line });
+        tokens.push({ kind, image: match.replace(/`|neg/, "¯"), line });
       } else if (kind === "ligature") {
         tokens.push({ kind, image: match.replace("_", "‿"), line });
+      } else if (kind === "lAngle") {
+        tokens.push({ kind, image: match.replace("{", "⟨"), line });
+      } else if (kind === "rAngle") {
+        tokens.push({ kind, image: match.replace("}", "⟩"), line });
+      } else if (kind === "diamond") {
+        tokens.push({ kind, image: match.replace(";", "⋄"), line });
       } else if (kind === "glyphname") {
         let i = 0;
         while (i < match.length) {
@@ -87,7 +98,9 @@ type AstNode =
   | { kind: "glyph reference"; glyph: string }
   | { kind: "binding"; name: string; declaredArity: number; value: AstNode }
   | { kind: "expression"; values: AstNode[] }
-  | { kind: "strand"; values: AstNode[] };
+  | { kind: "strand"; values: AstNode[] }
+  | { kind: "array"; values: AstNode[] }
+  | { kind: "list"; values: AstNode[] };
 export class Parser {
   private i = 0;
   constructor(private tokens: Token[]) {}
@@ -123,8 +136,12 @@ export class Parser {
     } else if (tok.kind === "identifier") {
       this.i++;
       return { kind: "reference", name: tok.image };
-    } else if (tok.kind === "openParen") {
+    } else if (tok.kind === "lParen") {
       return this.parenthesized();
+    } else if (tok.kind === "lSquare") {
+      return this.array();
+    } else if (tok.kind === "lAngle") {
+      return this.list();
     } else if (tok.kind === "glyph") {
       this.i++;
       const glyph = tok.image;
@@ -143,7 +160,7 @@ export class Parser {
     this.i++;
     const expr = this.expression();
     const tok = this.tokens[this.i];
-    if (tok?.kind !== "closeParen") {
+    if (tok?.kind !== "rParen") {
       throw new Error(
         `Parsing error on line ${tok.line} - expected closing parenthesis but ` +
           `got ${tok.kind}: ${tok.image}`,
@@ -151,6 +168,60 @@ export class Parser {
     }
     this.i++;
     return expr;
+  }
+  list(): AstNode {
+    debugger;
+    this.i++;
+    const values: AstNode[] = [];
+    let m = this.expression();
+    while (m) {
+      values.push(m);
+      const t = this.tok();
+      if (t?.kind === "rAngle") {
+        this.i++;
+        break;
+      }
+      if (t?.kind !== "diamond") {
+        throw new Error(
+          `Parsing error on line ${t?.line} - expected ⟩ or ⋄ but got ${t?.kind}`,
+        );
+      }
+      this.i++;
+      m = this.expression();
+      if (!m) {
+        throw new Error(
+          `Parsing error on line ${t.line} - list cannot end with a diamond`,
+        );
+      }
+    }
+    return { kind: "list", values };
+  }
+  array(): AstNode {
+    debugger;
+    this.i++;
+    const values: AstNode[] = [];
+    let m = this.expression();
+    while (m) {
+      values.push(m);
+      const t = this.tok();
+      if (t?.kind === "rSquare") {
+        this.i++;
+        break;
+      }
+      if (t?.kind !== "diamond") {
+        throw new Error(
+          `Parsing error on line ${t?.line} - expected ] or ⋄ but got ${t?.kind}`,
+        );
+      }
+      this.i++;
+      m = this.expression();
+      if (!m) {
+        throw new Error(
+          `Parsing error on line ${t.line} - array cannot end with a diamond`,
+        );
+      }
+    }
+    return { kind: "array", values };
   }
   monadicModifierStack(p: AstNode | void) {
     if (!p) return;
@@ -204,14 +275,14 @@ export class Parser {
     if (values.length === 1) return values[0];
     return { kind: "strand", values };
   }
-  expression(): AstNode {
+  expression(): AstNode | void {
     const values: AstNode[] = [];
     while (true) {
       const m = this.strand();
       if (!m) break;
       values.push(m);
     }
-    return { kind: "expression", values };
+    if (values.length !== 0) return { kind: "expression", values };
   }
   binding(): AstNode | void {
     const tok1 = this.tok();
@@ -224,7 +295,7 @@ export class Parser {
       kind: "binding",
       name: tok1.image,
       declaredArity,
-      value: this.expression(),
+      value: this.expression()!,
     };
   }
   program() {
@@ -318,11 +389,26 @@ export class Visitor {
         F(1, (x) => x),
       );
     }
-    if (node.kind === "strand") {
+    if (node.kind === "strand" || node.kind === "list") {
       return A(
         [node.values.length],
         node.values.map((v) => this.visit(v)),
       );
+    }
+    if (node.kind === "array") {
+      const v = node.values.map((n) => this.visit(n));
+      if (v.every((d) => d.kind === "array")) {
+        if (v.every((x, i) => match(x.shape, v[++i % v.length].shape))) {
+          return A(
+            [1, ...v[0].shape],
+            v.flatMap((x) => x.data),
+          );
+        }
+      } else if (!v.some((d) => d.kind === "array")) {
+        return A([v.length], v);
+      }
+      throw new Error("Elements of array literal must have matching shapes");
+      // v.every(d => d.kind === "array" && d.)
     }
     throw new Error(
       "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2),
