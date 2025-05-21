@@ -1,3 +1,4 @@
+import { glyphs } from "./glyphs";
 export type Val =
   | { kind: "character"; data: number }
   | { kind: "number"; data: number }
@@ -19,12 +20,17 @@ export const A = (shape: number[], data: Val[]) =>
   }) satisfies Val;
 
 export function display(val: Val): string {
-  if (val.kind === "number") return "" + val.data;
+  console.log(val);
+  if (val.kind === "number")
+    return val.data.toString().replace("-", glyphs.ng.glyph);
   if (val.kind === "character") {
     const j = JSON.stringify(String.fromCodePoint(val.data));
     return `'${j.slice(1, -1).replace(/'/g, "\\'")}'`;
   }
   if (val.kind === "function") return `<${val.arity === 1 ? "monad" : "dyad"}>`;
+  if (val.shape.length === 0) {
+    return `[${display(val.data[0])}]`;
+  }
   if (val.shape.length === 1) {
     if (val.shape[0] !== 0 && val.data.every((v) => v.kind === "character")) {
       return JSON.stringify(
@@ -153,29 +159,32 @@ function not(y: Val) {
   if (y.kind !== "number") throw new Error(`Cannot take NOT of ${y.kind}`);
   return N(1 - y.data);
 }
+function ng(y: Val) {
+  return sub(N(0), y);
+}
 function ne(x: Val, y: Val) {
   return not(eq(x, y));
 }
-function gt(x: Val, y: Val) {
-  if (x.kind === "array" || y.kind === "array") return each(gt, y);
+function grt(x: Val, y: Val) {
+  if (x.kind === "array" || y.kind === "array") return each(grt, y);
   if (x.kind !== y.kind)
     throw new Error(`Cannot compare ${x.kind} and ${y.kind}`);
   if (x.kind === "function" || y.kind === "function")
     throw new Error(`Cannot compare functions`);
   return N(x.data > y.data ? 1 : 0);
 }
-function ge(x: Val, y: Val) {
-  return max(gt(x, y), eq(x, y));
+function gte(x: Val, y: Val) {
+  return max(grt(x, y), eq(x, y));
 }
-function lt(x: Val, y: Val) {
-  return not(ge(x, y));
+function lte(x: Val, y: Val) {
+  return not(gte(x, y));
 }
-function le(x: Val, y: Val) {
-  return not(gt(x, y));
+function les(x: Val, y: Val) {
+  return not(grt(x, y));
 }
 function max(x: Val, y: Val) {
-  if (x.kind === "array" || y.kind === "array") return each(gt, y);
-  if (gt(x, y)) return x;
+  if (x.kind === "array" || y.kind === "array") return each(grt, y);
+  if (grt(x, y)) return x;
   return y;
 }
 function mEach(y: Val) {
@@ -220,11 +229,11 @@ function backwards(y: Val) {
   if (y.arity === 2) return F(2, (g, h) => y.data(h, g));
   return y;
 }
-export function compose(x: Val, y: Val) {
+export function atop(x: Val, y: Val) {
   if (x.kind !== "function") {
     if (y.kind !== "function")
       throw new Error("Cannot compose two non-functions");
-    return compose(backwards(y), x);
+    return atop(backwards(y), x);
   }
   if (y.kind === "function") {
     if (x.arity === 1) return F(y.arity, (...v) => x.data(y.data(...v)));
@@ -247,9 +256,8 @@ function cat(x: Val, y: Val): Val {
     if (xsh.length + 1 === ysh.length) return cat(A([1, ...xsh], x.data), y);
     if (xsh.length !== ysh.length || !match(xsh.slice(1), ysh.slice(1)))
       throw new Error("Arguments to catenate must have matching cells");
-    x.shape[0] += y.shape[0];
-    x.data.push(...y.data);
-    return x;
+    console.log(xsh, ysh);
+    return A([xsh[0] + ysh[0], ...xsh.slice(1)], x.data.concat(y.data));
   } else if (x.kind === "array") {
     const sh = [1, ...x.shape.slice(1)];
     const d = Array(sh.reduce((a, b) => a * b))
@@ -269,39 +277,50 @@ function cat(x: Val, y: Val): Val {
 function pair(x: Val, y: Val) {
   return A([2], [x, y]);
 }
+type PrimitiveName = Exclude<
+  keyof {
+    [K in keyof typeof glyphs as (typeof glyphs)[K]["kind"] extends "syntax"
+      ? never
+      : K]: 1;
+  },
+  "`"
+>;
 
-type GlyphKind = `${"mon" | "dy"}adic ${"function" | "modifier"}`;
-type Glyph = { alias: string; kind: GlyphKind; def: (...v: Val[]) => Val };
-export const glyphs: Record<string, Glyph> = {
-  "⍳": { alias: "iot", kind: "monadic function", def: iota },
-  "=": { alias: "eq", kind: "dyadic function", def: eq },
-  "≠": { alias: "ne", kind: "dyadic function", def: ne },
-  ">": { alias: "grt", kind: "dyadic function", def: gt },
-  "≥": { alias: "gte", kind: "dyadic function", def: ge },
-  "<": { alias: "les", kind: "dyadic function", def: lt },
-  "≤": { alias: "lte", kind: "dyadic function", def: le },
-  "+": { alias: "add", kind: "dyadic function", def: add },
-  "-": { alias: "sub", kind: "dyadic function", def: sub },
-  "×": { alias: "mul", kind: "dyadic function", def: mul },
-  "÷": { alias: "div", kind: "dyadic function", def: div },
-  "%": { alias: "mod", kind: "dyadic function", def: mod },
-  "⌊": { alias: "flo", kind: "monadic function", def: floor },
-  "⁅": { alias: "rou", kind: "monadic function", def: round },
-  "⌈": { alias: "cei", kind: "monadic function", def: ceil },
-  "≡": { alias: "mat", kind: "dyadic function", def: fMatch },
-  "≢": { alias: "nmt", kind: "dyadic function", def: noMatch },
-  "⧻": { alias: "len", kind: "monadic function", def: length },
-  "△": { alias: "sha", kind: "monadic function", def: shape },
-  ",": { alias: "par", kind: "dyadic function", def: pair },
-  "⍪": { alias: "cat", kind: "dyadic function", def: cat },
-  "¨": { alias: "eac", kind: "monadic modifier", def: mEach },
-  "/": { alias: "red", kind: "monadic modifier", def: reduce },
-  "\\": { alias: "sca", kind: "monadic modifier", def: scan },
-  "⊢": { alias: "lft", kind: "dyadic function", def: (_, y) => y },
-  "⊣": { alias: "rgt", kind: "dyadic function", def: (x, _) => x },
-  "⋅": { alias: "id", kind: "monadic function", def: (x) => x },
-  "∘": { alias: "jot", kind: "dyadic modifier", def: compose },
+export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
+  eq,
+  ne,
+  grt,
+  gte,
+  les,
+  lte,
+  lft: (x, _) => x,
+  rgt: (_, y) => y,
+  id: (x) => x,
+  iot: iota,
+  add,
+  sub,
+  mul,
+  div,
+  mod,
+  flo: floor,
+  rou: round,
+  cei: ceil,
+  mat: fMatch,
+  nmt: noMatch,
+  len: length,
+  sha: shape,
+  par: pair,
+  cat,
+  eac: mEach,
+  red: reduce,
+  sca: scan,
+  jot: atop,
+  ng,
 };
-export function getGlyphByAlias(alias: string) {
-  return Object.keys(glyphs).find((key) => glyphs[key].alias === alias);
+export function primitiveByGlyph(glyph: string) {
+  return primitives[
+    Object.entries(glyphs).find(
+      ([_, data]) => data.glyph === glyph,
+    )![0] as PrimitiveName
+  ];
 }

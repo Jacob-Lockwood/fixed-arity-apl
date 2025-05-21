@@ -1,23 +1,30 @@
 import { createSignal, For } from "solid-js";
 import { Visitor, Token, lex, Parser } from "./lang";
-import { display, glyphs } from "./primitives";
+import { display } from "./primitives";
 import { Component } from "solid-js";
+import { glyphs } from "./glyphs";
 
 const glyphColors = {
   "monadic function": "text-lime-400",
   "dyadic function": "text-sky-400",
   "monadic modifier": "text-yellow-400",
   "dyadic modifier": "text-purple-300",
+  syntax: "text-gray-300",
 };
 
 export const Highlight: Component<{ tokens: readonly Token[] }> = (props) => {
   return props.tokens.map(({ kind, image }) => {
     switch (kind) {
-      case "glyph":
-        const glyph = glyphs[image];
-        const color = glyphColors[glyph.kind];
+      case "monadic function":
+      case "dyadic function":
+      case "monadic modifier":
+      case "dyadic modifier":
+        const color = glyphColors[kind];
+        const alias = Object.entries(glyphs).find(
+          ([_, d]) => d.glyph === image,
+        )![0];
         return (
-          <span title={glyph.alias} class={color}>
+          <span title={alias} class={color}>
             {image}
           </span>
         );
@@ -55,6 +62,7 @@ export function Repl() {
     let error: string | null = null;
     try {
       tokens = lex(source);
+      // console.log(tokens);
       const e = new Parser(
         tokens.filter((x) => !"whitespace,comment".includes(x.kind)),
       ).expression()!;
@@ -155,18 +163,20 @@ export function Repl() {
         </div>
       </div>
       <div class="flex flex-wrap text-2xl">
-        {Object.entries(glyphs).map(([glyph, data]) => (
+        {Object.entries(glyphs).map(([alias, data]) => (
           <button
             class="group hocus:bg-emerald-800 block cursor-pointer rounded-t-sm select-none focus:outline-0"
             onClick={() => {
               textarea.focus();
-              textarea.setRangeText(glyph);
+              textarea.setRangeText(data.glyph);
               textarea.selectionStart++;
             }}
           >
-            <span class={"-z-10 p-2 " + glyphColors[data.kind]}>{glyph}</span>
+            <span class={"-z-10 p-2 " + glyphColors[data.kind]}>
+              {data.glyph}
+            </span>
             <p class="group-hocus:block absolute z-10 hidden w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm">
-              alias: {data.alias} <br /> {data.kind}
+              alias: {alias} <br /> {data.name} <br /> {data.kind}
             </p>
           </button>
         ))}

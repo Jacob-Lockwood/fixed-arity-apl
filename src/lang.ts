@@ -1,91 +1,82 @@
-import { glyphs, Val, F, getGlyphByAlias, A, match } from "./primitives";
-
-const patterns = {
+import { Val, F, A, match, primitiveByGlyph } from "./primitives";
+import { glyphs, PrimitiveKind } from "./glyphs";
+const basic = {
   string: /^"(\\.|[^"$])*"/,
-  number: /^([`¯]|neg)?\d+(\.\d+)?/,
   character: /^'(\\.|[^'\\])*'/,
   identifier: /^[A-Z][A-Za-z]*/,
+  number: /^\d+(\.\d+)?/,
   comment: /^#.*/m,
   space: /^ +/,
   newline: /^$/m,
-  lParen: /^\(/,
-  rParen: /^\)/,
-  binding: /^[:←][012⓪①②]?/,
-  ligature: /^[_‿]/,
-  lSquare: /^\[/,
-  rSquare: /^\]/,
-  lAngle: /^[{⟨]/,
-  rAngle: /^[}⟩]/,
-  diamond: /^[;⋄]/,
-  // openCurly: /{/y, closeCurly: /}/y, openSquare: /\[/y, closeSquare: /\]/y,
-  glyphname: /^[a-z]+/,
-  glyph: /^./,
-} as const;
-
-export type TokenKind = keyof typeof patterns;
-export type Token = {
-  kind: TokenKind;
-  image: string;
-  line: number;
+  "open parenthesis": /^\(/,
+  "close parenthesis": /^\)/,
+  "open array": /^\[/,
+  "close array": /^\]/,
+  other: /^[^'"A-Z# \n()\[\]]+/,
 };
-export function lex(code: string) {
-  const tokens: Token[] = [{ kind: "newline", image: "", line: 0 }];
+type SyntaxName = {
+  [K in keyof typeof glyphs as (typeof glyphs)[K]["kind"] extends "syntax"
+    ? (typeof glyphs)[K]["name"]
+    : never]: 1;
+};
+type TokenKind = keyof Omit<typeof basic & SyntaxName, "other"> | PrimitiveKind;
+export type Token = { kind: TokenKind; line: number; image: string };
+export function lex(source: string) {
+  const o: Token[] = [];
   let line = 1;
-  loop: while (code.length) {
-    for (const key in patterns) {
-      const kind = key as TokenKind;
-      const regex = patterns[kind];
-      const execResult = regex.exec(code);
-      if (!execResult) continue;
-      const [match] = execResult;
-      if (kind === "glyph" && !(match in glyphs)) {
-        throw new Error(`Unrecognized glyph ${match} on line ${line}`);
+  lex: while (source.length) {
+    const cur = source.slice(0, 10);
+    findtok: for (const [bkind, reg] of Object.entries(basic)) {
+      const mat = source.match(reg);
+      if (!mat) continue;
+      let [m] = mat;
+      source = source.slice(m.length);
+      if (bkind !== "other") {
+        o.push({ kind: bkind as TokenKind, line, image: m });
+        continue lex;
       }
-      if (kind === "binding") {
-        const image = match.replace(":", "←").replace(/\d/, (a) => "⓪①②"[+a]);
-        tokens.push({ kind, image, line });
-      } else if (kind === "number") {
-        tokens.push({ kind, image: match.replace(/`|neg/, "¯"), line });
-      } else if (kind === "ligature") {
-        tokens.push({ kind, image: match.replace("_", "‿"), line });
-      } else if (kind === "lAngle") {
-        tokens.push({ kind, image: match.replace("{", "⟨"), line });
-      } else if (kind === "rAngle") {
-        tokens.push({ kind, image: match.replace("}", "⟩"), line });
-      } else if (kind === "diamond") {
-        tokens.push({ kind, image: match.replace(";", "⋄"), line });
-      } else if (kind === "glyphname") {
-        let i = 0;
-        while (i < match.length) {
-          const two = match.slice(i, i + 2);
-          const three = match.slice(i, i + 3);
-          const [g2, g3] = [two, three].map(getGlyphByAlias);
-          let image: string;
-          if (g2) {
-            image = g2;
-            i += 2;
-          } else if (g3) {
-            image = g3;
-            i += 3;
-          } else {
-            throw new Error(
-              `Unrecognized glyph name ${match.slice(i)} on line ${line}`,
-            );
-          }
-          tokens.push({ kind: "glyph", image, line });
+      m = m.replaceAll("`", glyphs.ng.glyph);
+      other: while (m.length) {
+        const num = m.match(basic.number);
+        if (num) {
+          o.push({ kind: "number", line, image: num[0] });
+          m = m.slice(num[0].length);
+          continue other;
         }
-      } else {
-        tokens.push({ kind, image: match, line });
-        line += match.split("\n").length - 1;
+        const en = Object.entries(glyphs).find(
+          ([alias, { glyph }]) => m.startsWith(glyph) || m.startsWith(alias),
+        );
+        if (!en) break findtok;
+        const [alias, { glyph, name, kind }] = en;
+        const x = m.startsWith(alias) ? alias : glyph;
+        m = m.slice(x.length);
+        if (name === "negate") {
+          const match = m.match(basic.number);
+          if (match) {
+            const n = match[0];
+            m = m.slice(n.length);
+            o.push({ kind: "number", line, image: glyph + n });
+            continue other;
+          }
+        }
+        if (kind === "syntax") {
+          let image = glyph;
+          if (name === "binding") {
+            const d = "⓪①②012";
+            const a = d[d.indexOf(m[1]) % 3] ?? "";
+            m = m.slice(a.length);
+            image += a;
+          }
+          o.push({ kind: name, line, image: glyph });
+        } else {
+          o.push({ kind, line, image: glyph });
+        }
       }
-      code = code.slice(match.length);
-      continue loop;
+      continue lex;
     }
-    throw new Error(
-      `Lexing error at line ${line} -- code: ` + code.slice(0, 10),
-    );
+    throw new Error(`Lexing error on line ${line} near ${cur}`);
   }
-  return tokens;
+  return o;
 }
 
 type AstNode =
@@ -95,12 +86,13 @@ type AstNode =
   | { kind: "monadic modifier"; glyph: string; fn: AstNode }
   | { kind: "dyadic modifier"; glyph: string; fns: [AstNode, AstNode] }
   | { kind: "reference"; name: string }
-  | { kind: "glyph reference"; glyph: string }
+  | { kind: "glyph reference"; arity: number; glyph: string }
   | { kind: "binding"; name: string; declaredArity: number; value: AstNode }
   | { kind: "expression"; values: AstNode[] }
   | { kind: "strand"; values: AstNode[] }
   | { kind: "array"; values: AstNode[] }
   | { kind: "list"; values: AstNode[] };
+
 export class Parser {
   private i = 0;
   constructor(private tokens: Token[]) {}
@@ -136,52 +128,47 @@ export class Parser {
     } else if (tok.kind === "identifier") {
       this.i++;
       return { kind: "reference", name: tok.image };
-    } else if (tok.kind === "lParen") {
+    } else if (tok.kind === "open parenthesis") {
       return this.parenthesized();
-    } else if (tok.kind === "lSquare") {
+    } else if (tok.kind === "open array") {
       return this.array();
-    } else if (tok.kind === "lAngle") {
+    } else if (tok.kind === "open list") {
       return this.list();
-    } else if (tok.kind === "glyph") {
+    } else if (tok.kind.includes("function")) {
       this.i++;
-      const glyph = tok.image;
-      const { kind } = glyphs[glyph];
-      if (kind.includes("function")) {
-        return { kind: "glyph reference", glyph };
-      } else {
-        throw new Error(
-          `Parsing error on line ${tok.line} - expected function glyph but ` +
-            `got modifier: ${glyph}`,
-        );
-      }
+      return {
+        kind: "glyph reference",
+        arity: tok.kind.includes("monadic") ? 1 : 2,
+        glyph: tok.image,
+      };
     }
   }
   parenthesized() {
     this.i++;
     const expr = this.expression();
+    if (!expr) throw new Error("Parentheses may not be empty");
     const tok = this.tokens[this.i];
-    if (tok?.kind !== "rParen") {
+    if (tok?.kind !== "close parenthesis") {
       throw new Error(
-        `Parsing error on line ${tok.line} - expected closing parenthesis but ` +
-          `got ${tok.kind}: ${tok.image}`,
+        `Parsing error on line ${tok.line} - expected closing parenthesis ` +
+          `but got ${tok.kind}: ${tok.image}`,
       );
     }
     this.i++;
     return expr;
   }
   list(): AstNode {
-    debugger;
     this.i++;
     const values: AstNode[] = [];
     let m = this.expression();
     while (m) {
       values.push(m);
       const t = this.tok();
-      if (t?.kind === "rAngle") {
+      if (t?.kind === "close list") {
         this.i++;
         break;
       }
-      if (t?.kind !== "diamond") {
+      if (t?.kind !== "separator") {
         throw new Error(
           `Parsing error on line ${t?.line} - expected ⟩ or ⋄ but got ${t?.kind}`,
         );
@@ -197,18 +184,17 @@ export class Parser {
     return { kind: "list", values };
   }
   array(): AstNode {
-    debugger;
     this.i++;
     const values: AstNode[] = [];
     let m = this.expression();
     while (m) {
       values.push(m);
       const t = this.tok();
-      if (t?.kind === "rSquare") {
+      if (t?.kind === "close array") {
         this.i++;
         break;
       }
-      if (t?.kind !== "diamond") {
+      if (t?.kind !== "separator") {
         throw new Error(
           `Parsing error on line ${t?.line} - expected ] or ⋄ but got ${t?.kind}`,
         );
@@ -217,7 +203,7 @@ export class Parser {
       m = this.expression();
       if (!m) {
         throw new Error(
-          `Parsing error on line ${t.line} - array cannot end with a diamond`,
+          `Parsing error on line ${t.line} - array cannot end with a separator`,
         );
       }
     }
@@ -227,12 +213,9 @@ export class Parser {
     if (!p) return;
     while (true) {
       const tok = this.tokens[this.i];
-      if (tok?.kind !== "glyph") return p;
-      const glyph = tok.image;
-      const { kind } = glyphs[glyph];
-      if (kind !== "monadic modifier") return p;
+      if (tok?.kind !== "monadic modifier") return p;
       this.i++;
-      p = { kind: "monadic modifier", glyph: glyph, fn: p };
+      p = { kind: "monadic modifier", glyph: tok.image, fn: p };
     }
   }
   modifierExpression() {
@@ -241,19 +224,16 @@ export class Parser {
     while (true) {
       p = this.monadicModifierStack(p);
       const tok = this.tokens[this.i];
-      if (tok?.kind !== "glyph") return p;
-      const glyph = tok.image;
-      const { kind } = glyphs[glyph];
-      if (kind !== "dyadic modifier") return p;
+      if (tok?.kind !== "dyadic modifier") return p;
       this.i++;
       const r = this.primary();
       if (!r) {
         throw new Error(
           `Parsing error on line ${tok.line} - expected right argument to ` +
-            `dyadic modifier but got ${tok.kind}: ${glyph}`,
+            `dyadic modifier but got ${tok.kind}: ${tok.image}`,
         );
       }
-      p = { kind: "dyadic modifier", glyph, fns: [p!, r] };
+      p = { kind: "dyadic modifier", glyph: tok.image, fns: [p!, r] };
     }
   }
   strand(): AstNode | void {
@@ -336,14 +316,15 @@ export class Visitor {
       };
     }
     if (node.kind === "glyph reference") {
-      const g = glyphs[node.glyph];
-      return F(g.kind === "monadic function" ? 1 : 2, g.def);
+      return F(node.arity, primitiveByGlyph(node.glyph));
     }
     if (node.kind === "monadic modifier") {
-      return glyphs[node.glyph].def(this.visit(node.fn));
+      return primitiveByGlyph(node.glyph)(this.visit(node.fn));
     }
     if (node.kind === "dyadic modifier") {
-      return glyphs[node.glyph].def(...node.fns.map((f) => this.visit(f)));
+      return primitiveByGlyph(node.glyph)(
+        ...node.fns.map((f) => this.visit(f)),
+      );
     }
     if (node.kind === "expression") {
       const tines = node.values.map((n) => this.visit(n));
@@ -354,9 +335,11 @@ export class Visitor {
         const isF = l.kind === "function";
         return (r) => {
           const arity = Math.max(r.arity, isF ? l.arity : 0);
-          return F(arity, (...v) =>
-            g.data(isF ? l.data(...v) : l, r.data(...v)),
-          );
+          return F(arity, (x, y) => {
+            const lft = isF ? (arity > l.arity ? l.data(y) : l.data(x, y)) : l;
+            const rgt = arity > r.arity ? r.data(y) : r.data(x, y);
+            return g.data(lft, rgt);
+          });
         };
       }
       function atop(g: Val & { kind: "function" }): Cmp {
@@ -367,27 +350,22 @@ export class Visitor {
           };
         return (r) => F(r.arity, (...v) => g.data(r.data(...v)));
       }
-      for (let i = 0; i < tines.length; i++) {
-        const t = tines[i];
+      for (let i = 0; ; i++) {
+        let t = tines[i];
         const n = tines[i + 1];
-        if (n?.kind === "function" && n.arity === 2) {
+        if (!n) {
+          t ??= F(1, (...v) => v.at(-1)!);
+          const s = t.kind === "function" ? t : F(0, () => t);
+          const g = fns.reduceRight((r, fn) => fn(r), s);
+          return g.arity === 0 ? g.data() : g;
+        }
+        if (n.kind === "function" && n.arity === 2) {
           i++;
           fns.push(fork(t, n));
         } else if (t.kind === "function") {
           fns.push(atop(t));
-        } else if (i === tines.length - 1) {
-          const fn = fns.reduceRight(
-            (r, fn) => fn(r),
-            F(0, () => t),
-          );
-          if (fn.arity === 0) return fn.data();
-          return fn;
         } else throw new Error("Cannot have nilad outside of fork");
       }
-      return fns.reduceRight(
-        (r, fn) => fn(r),
-        F(1, (x) => x),
-      );
     }
     if (node.kind === "strand" || node.kind === "list") {
       return A(
