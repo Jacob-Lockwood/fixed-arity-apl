@@ -144,11 +144,11 @@ export default function App() {
         <p>
           The monospaced font used on this page is{" "}
           <a
-            href="https://github.com/uiua-lang/uiua/blob/main/src/algorithm/Uiua386.ttf"
+            href="https://github.com/RubenVerg/tinyapl386/blob/97fb8c10bbb5ac9d34555812cfed0070c545fa4c/TinyAPL386.ttf"
             class="underline"
             target="_blank"
           >
-            Uiua386
+            TinyAPL386
           </a>
           .
         </p>
