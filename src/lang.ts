@@ -381,7 +381,7 @@ export class Visitor {
       if (v.every((d) => d.kind === "array")) {
         if (v.every((x, i) => match(x.shape, v[++i % v.length].shape))) {
           return A(
-            [1, ...v[0].shape],
+            [v.length, ...v[0].shape],
             v.flatMap((x) => x.data),
           );
         }
