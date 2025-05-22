@@ -229,6 +229,11 @@ function backwards(y: Val) {
   if (y.arity === 2) return F(2, (g, h) => y.data(h, g));
   return y;
 }
+function self(y: Val) {
+  if (y.kind !== "function")
+    throw new Error("Operand to self must be a function");
+  return F(1, (v) => y.data(v, v));
+}
 export function atop(x: Val, y: Val) {
   if (x.kind !== "function") {
     if (y.kind !== "function")
@@ -277,14 +282,43 @@ function cat(x: Val, y: Val): Val {
 function pair(x: Val, y: Val) {
   return A([2], [x, y]);
 }
-type PrimitiveName = Exclude<
-  keyof {
-    [K in keyof typeof glyphs as (typeof glyphs)[K]["kind"] extends "syntax"
-      ? never
-      : K]: 1;
-  },
-  "`"
->;
+function reshape(x: Val, y: Val) {
+  const sh: number[] = [];
+  if (x.kind === "number") {
+    sh[0] = x.data;
+  } else if (
+    x.kind === "array" &&
+    x.shape.length === 1 &&
+    x.data.every((v) => v.kind === "number")
+  ) {
+    sh.push(...x.data.map((v) => v.data));
+  } else throw new Error("Left argument to reshape must be a valid shape");
+  const data = y.kind === "array" ? y.data : [y];
+  if (data.length === 0) throw new Error("Cannot reshape empty array");
+  const len = sh.reduce((x, y) => x * y, 1);
+  const o = [];
+  for (let i = 0; i < len; i++) {
+    o.push(data[i % data.length]);
+  }
+  return A(sh, o);
+}
+
+function over(x: Val, y: Val) {
+  if (x.kind !== "function" || y.kind !== "function")
+    throw new Error("Operands to over must both be functions");
+  if (x.arity !== 2) throw new Error("Left operand to over must be dyadic");
+  return F(2, (n, m) =>
+    y.arity === 1
+      ? x.data(y.data(n), y.data(m))
+      : x.data(y.data(m, n), y.data(n, m)),
+  );
+}
+
+type PrimitiveName = keyof {
+  [K in keyof typeof glyphs as (typeof glyphs)[K]["kind"] extends "syntax"
+    ? never
+    : K]: 1;
+};
 
 export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   eq,
@@ -311,9 +345,13 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   sha: shape,
   par: pair,
   cat,
+  res: reshape,
+  bac: backwards,
+  slf: self,
   eac: mEach,
   red: reduce,
   sca: scan,
+  ov: over,
   jot: atop,
   ng,
 };

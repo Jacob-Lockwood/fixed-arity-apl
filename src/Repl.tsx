@@ -57,16 +57,19 @@ export function Repl() {
 
   const visitor = new Visitor();
   const process = (source: string) => {
-    let tokens: Token[] | null = null;
+    let tokens: Token[] = [];
     let output: string | null = null;
     let error: string | null = null;
     try {
       tokens = lex(source);
-      // console.log(tokens);
-      const e = new Parser(
-        tokens.filter((x) => !"whitespace,comment".includes(x.kind)),
-      ).expression()!;
-      output = display(visitor.visit(e));
+      const t = tokens.filter((x) => !"whitespace,comment".includes(x.kind));
+      const p = new Parser(t);
+      const e = p.expression();
+      if (e) {
+        output = display(visitor.visit(e));
+      } else {
+        error = "Empty input";
+      }
     } catch (e) {
       error = e + "";
       console.error(e);
