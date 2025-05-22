@@ -302,6 +302,10 @@ function reshape(x: Val, y: Val) {
   }
   return A(sh, o);
 }
+function flat(y: Val) {
+  if (y.kind !== "array") return y;
+  return A([y.shape.reduce((x, y) => x * y, 1)], y.data);
+}
 
 function over(x: Val, y: Val) {
   if (x.kind !== "function" || y.kind !== "function")
@@ -343,6 +347,7 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   nmt: noMatch,
   len: length,
   sha: shape,
+  fla: flat,
   par: pair,
   cat,
   res: reshape,
