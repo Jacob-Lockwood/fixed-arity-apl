@@ -374,6 +374,9 @@ export class Visitor {
       );
     }
     if (node.kind === "array") {
+      if (node.values.length === 0) {
+        throw new Error("Square brackets may not be empty");
+      }
       const v = node.values.map((n) => this.visit(n));
       if (v.every((d) => d.kind === "array")) {
         if (v.every((x, i) => match(x.shape, v[++i % v.length].shape))) {
@@ -386,7 +389,6 @@ export class Visitor {
         return A([v.length], v);
       }
       throw new Error("Elements of array literal must have matching shapes");
-      // v.every(d => d.kind === "array" && d.)
     }
     throw new Error(
       "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2),
