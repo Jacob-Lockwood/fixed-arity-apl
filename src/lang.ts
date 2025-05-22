@@ -354,7 +354,7 @@ export class Visitor {
         let t = tines[i];
         const n = tines[i + 1];
         if (!n) {
-          t ??= F(1, (...v) => v.at(-1)!);
+          t ??= F(1, (y) => y);
           const s = t.kind === "function" ? t : F(0, () => t);
           const g = fns.reduceRight((r, fn) => fn(r), s);
           return g.arity === 0 ? g.data() : g;
