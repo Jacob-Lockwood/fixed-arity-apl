@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { Visitor, Token, lex, Parser } from "./lang";
 import { display } from "./primitives";
 import { Component } from "solid-js";
@@ -54,6 +54,7 @@ type Result = {
 export function Repl() {
   const [results, setResults] = createSignal<Result[]>([]);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
+  const [selectedGlyph, setSelectedGlyph] = createSignal(-1);
 
   const visitor = new Visitor();
   const process = (source: string) => {
@@ -166,21 +167,28 @@ export function Repl() {
         </div>
       </div>
       <div class="flex flex-wrap text-2xl">
-        {Object.entries(glyphs).map(([alias, data]) => (
+        {Object.entries(glyphs).map(([alias, data], i) => (
           <button
-            class="group hocus:bg-emerald-800 block cursor-pointer rounded-t-sm select-none focus:outline-0"
+            class="block cursor-pointer rounded-t-sm select-none focus:outline-0"
+            classList={{ "bg-emerald-800": selectedGlyph() === i }}
             onClick={() => {
               textarea.focus();
               textarea.setRangeText(data.glyph);
               textarea.selectionStart++;
             }}
+            onFocus={() => setSelectedGlyph(i)}
+            onMouseEnter={() => setSelectedGlyph(i)}
+            onBlur={() => setSelectedGlyph(-1)}
+            onMouseLeave={() => setSelectedGlyph(-1)}
           >
             <span class={"-z-10 p-2 " + glyphColors[data.kind]}>
               {data.glyph}
             </span>
-            <p class="group-hocus:block absolute z-10 hidden w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm">
-              alias: {alias} <br /> {data.name} <br /> {data.kind}
-            </p>
+            <Show when={selectedGlyph() === i}>
+              <p class="absolute z-10 w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm">
+                alias: {alias} <br /> {data.name} <br /> {data.kind}
+              </p>
+            </Show>
           </button>
         ))}
       </div>
