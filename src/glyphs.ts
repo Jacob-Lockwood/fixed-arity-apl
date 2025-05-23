@@ -1,11 +1,3 @@
-/*
-
-1. break input into strings, identifiers, whitespace, and other
-2. the "other" sections have text replacements performed on them
-3. the "other" sections are properly lexed
-
-*/
-
 export type PrimitiveKind = `${"mon" | "dy"}adic ${"function" | "modifier"}`;
 type GlyphKind = PrimitiveKind | "syntax";
 export const glyphs = {
@@ -27,8 +19,9 @@ export const glyphs = {
   iot: { name: "iota", glyph: "⍳", kind: "monadic function" },
   len: { name: "length", glyph: "⧻", kind: "monadic function" },
   sha: { name: "shape", glyph: "△", kind: "monadic function" },
-  fla: { name: "flat", glyph: ",", kind: "monadic function" },
+  fla: { name: "flat", glyph: "▽", kind: "monadic function" },
   enc: { name: "enclose", glyph: "□", kind: "monadic function" },
+  enl: { name: "enlist", glyph: "⋄", kind: "monadic function" },
   mat: { name: "match", glyph: "≡", kind: "dyadic function" },
   nmt: { name: "nomatch", glyph: "≢", kind: "dyadic function" },
   par: { name: "pair", glyph: "⍮", kind: "dyadic function" },
@@ -52,7 +45,7 @@ export const glyphs = {
   ")": { name: "close parenthesis", glyph: ")", kind: "syntax" },
   "{": { name: "open list", glyph: "⟨", kind: "syntax" },
   "}": { name: "close list", glyph: "⟩", kind: "syntax" },
-  ";": { name: "separator", glyph: "⋄", kind: "syntax" },
+  ",": { name: "separator", glyph: ",", kind: "syntax" },
   ":": { name: "binding", glyph: "←", kind: "syntax" },
   _: { name: "ligature", glyph: "‿", kind: "syntax" },
 } as const satisfies Record<

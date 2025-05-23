@@ -8,11 +8,7 @@ const basic = {
   comment: /^#.*/m,
   space: /^ +/,
   newline: /^$/m,
-  "open parenthesis": /^\(/,
-  "close parenthesis": /^\)/,
-  "open array": /^\[/,
-  "close array": /^\]/,
-  other: /^[^'"A-Z# \n()\[\]]+/,
+  other: /^[^'"A-Z# \n]+/,
 };
 type SyntaxName = {
   [K in keyof typeof glyphs as (typeof glyphs)[K]["kind"] extends "syntax"

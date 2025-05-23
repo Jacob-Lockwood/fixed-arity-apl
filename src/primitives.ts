@@ -36,11 +36,11 @@ export function display(val: Val): string {
         String.fromCodePoint(...val.data.map((v) => v.data)),
       );
     }
-    return `⟨${val.data.map(display).join(" ⋄ ")}⟩`;
+    return `⟨${val.data.map(display).join(", ")}⟩`;
   }
   if (val.shape.includes(0)) return `[shape ${val.shape.join("×")}]`;
   const c = cells(val, -1).data;
-  return `[${c.map(display).join(" ⋄ ")}]`;
+  return `[${c.map(display).join(", ")}]`;
 }
 
 export function match(a: readonly unknown[], b: readonly unknown[]) {
@@ -362,6 +362,9 @@ function pick(x: Val, y: Val): Val {
 function enclose(y: Val) {
   return A([], [y]);
 }
+function enlist(y: Val) {
+  return A([1], [y]);
+}
 
 function over(x: Val, y: Val) {
   if (x.kind !== "function" || y.kind !== "function")
@@ -405,6 +408,7 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   sha: shape,
   fla: flat,
   enc: enclose,
+  enl: enlist,
   par: pair,
   cat,
   res: reshape,
