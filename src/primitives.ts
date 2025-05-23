@@ -248,11 +248,11 @@ function self(y: Val) {
     throw new Error("Operand to self must be a function");
   return F(1, (v) => y.data(v, v));
 }
-export function atop(x: Val, y: Val) {
+export function jot(x: Val, y: Val) {
   if (x.kind !== "function") {
     if (y.kind !== "function")
       throw new Error("Cannot compose two non-functions");
-    return atop(backwards(y), x);
+    return jot(backwards(y), x);
   }
   if (y.kind === "function") {
     if (x.arity === 1) return F(y.arity, (...v) => x.data(y.data(...v)));
@@ -420,7 +420,7 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   red: reduce,
   sca: scan,
   ov: over,
-  jot: atop,
+  jot,
   ng,
 };
 export function primitiveByGlyph(glyph: string) {
