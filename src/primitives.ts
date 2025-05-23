@@ -20,7 +20,6 @@ export const A = (shape: number[], data: Val[]) =>
   }) satisfies Val;
 
 export function display(val: Val): string {
-  console.log(val);
   if (val.kind === "number")
     return val.data.toString().replace("-", glyphs.ng.glyph);
   if (val.kind === "character") {
@@ -29,7 +28,7 @@ export function display(val: Val): string {
   }
   if (val.kind === "function") return `<${val.arity === 1 ? "monad" : "dyad"}>`;
   if (val.shape.length === 0) {
-    return `[${display(val.data[0])}]`;
+    return glyphs.enc.glyph + display(val.data[0]);
   }
   if (val.shape.length === 1) {
     if (val.shape[0] !== 0 && val.data.every((v) => v.kind === "character")) {
@@ -40,7 +39,7 @@ export function display(val: Val): string {
     return `⟨${val.data.map(display).join(" ⋄ ")}⟩`;
   }
   if (val.shape.includes(0)) return `[shape ${val.shape.join("×")}]`;
-  const c = cells(val, -1).data as Val[];
+  const c = cells(val, -1).data;
   return `[${c.map(display).join(" ⋄ ")}]`;
 }
 
@@ -65,14 +64,15 @@ function each(fn: (...x: Val[]) => Val, ...x: Val[]): Val {
   }
   return fn(a, b);
 }
-export function cells(a: Val, r: number): Val {
-  if (a.kind !== "array" || r === 0) return a;
-  const frame = a.shape.slice(0, -r);
-  const cell = a.shape.slice(-r);
+export function cells(arr: Val, r: number) {
+  if (arr.kind !== "array") return A([1], [arr]);
+  if (r === 0) return arr;
+  const frame = arr.shape.slice(0, -r);
+  const cell = arr.shape.slice(-r);
   const delta = cell.reduce((a, b) => a * b, 1);
   const data: Val[] = [];
-  for (let i = 0; i < a.data.length; i += delta) {
-    const chunk = a.data.slice(i, i + delta);
+  for (let i = 0; i < arr.data.length; i += delta) {
+    const chunk = arr.data.slice(i, i + delta);
     data.push(A(cell, chunk));
   }
   return A(frame, data);
@@ -81,6 +81,20 @@ export function atRank(ranks: number[], fn: (...x: Val[]) => Val) {
   return (...xs: Val[]) =>
     each(fn, ...xs.map((x, i) => cells(x, ranks[i] ?? ranks[0])));
 }
+// function atDepth(
+//   depths: number[],
+//   fn: (...x: Val[]) => Val,
+// ): (...xs: Val[]) => Val {
+//   if (depths.every((n) => n === 0)) return fn;
+//   return (...xs: Val[]) =>
+//     each(
+//       atDepth(
+//         depths.map((n) => n && Math.min(n - 1, n + 1)),
+//         fn,
+//       ),
+//       ...depths.map((d, i) => (d === 0 ? A([1], [xs[i]]) : xs[i])),
+//     );
+// }
 export const range = (shape: number[]): Val =>
   A(
     shape,
@@ -197,7 +211,7 @@ function reduce(y: Val) {
     throw new Error("Operand to reduce must be a dyadic function");
   return F(1, (x) => {
     if (x.kind !== "array") throw new Error(`Cannot reduce ${x.kind}`);
-    const c = cells(x, -1) as Val & { kind: "array" };
+    const c = cells(x, -1);
     return c.data.reduce((acc, val) => y.data(acc, val));
   });
 }
@@ -206,7 +220,7 @@ function scan(y: Val) {
     throw new Error("Operand to scan must be a dyadic function");
   return F(1, (x) => {
     if (x.kind !== "array") throw new Error(`Cannot scan ${x.kind}`);
-    const c = cells(x, -1) as Val & { kind: "array" };
+    const c = cells(x, -1);
     for (let i = 1, acc = c.data[0]; i < c.shape[0]; i++) {
       c.data[i] = acc = y.data(acc, c.data[i]);
     }
@@ -261,7 +275,6 @@ function cat(x: Val, y: Val): Val {
     if (xsh.length + 1 === ysh.length) return cat(A([1, ...xsh], x.data), y);
     if (xsh.length !== ysh.length || !match(xsh.slice(1), ysh.slice(1)))
       throw new Error("Arguments to catenate must have matching cells");
-    console.log(xsh, ysh);
     return A([xsh[0] + ysh[0], ...xsh.slice(1)], x.data.concat(y.data));
   } else if (x.kind === "array") {
     const sh = [1, ...x.shape.slice(1)];
@@ -306,6 +319,49 @@ function flat(y: Val) {
   if (y.kind !== "array") return y;
   return A([y.shape.reduce((x, y) => x * y, 1)], y.data);
 }
+function select(x: Val, y: Val) {
+  if (y.kind !== "array") throw new Error("Cannot select from non-array");
+  const c = cells(y, -1);
+  const len = y.shape[0];
+  return each((v) => {
+    if (v.kind !== "number") throw new Error("Cannot select non-number");
+    let i = v.data;
+    if (i < 0) i += len;
+    if (i > len) throw new Error(`Index ${i} out of bounds for length ${len}`);
+    return c.data[i];
+  }, x);
+}
+function pick(x: Val, y: Val): Val {
+  if (y.kind !== "array") throw new Error("Cannot pick from non-array");
+  const c = cells(x, 1);
+  console.log(display(c));
+  console.log("shape", c.shape);
+  const l = c.shape.reduce((n, m) => n * m, 1);
+  console.log("length", l);
+  for (let i = 0; i < l; i++) {
+    const v = c.data[i];
+    if (v.kind !== "array") throw new Error("Pick indices must be arrays");
+    if (v.data.every((m) => m.kind === "array"))
+      return each((z) => pick(z, y), v);
+    if (!v.data.every((m) => m.kind === "number"))
+      throw new Error("Invalid types in pick indices array");
+    const idx = v.data.map((n) => n.data);
+    if (idx.length === 0) throw new Error("Index may not be empty");
+    if (idx.length !== y.shape.length)
+      throw new Error("Index must have the same length as the source's shape");
+    const d = idx.reduce((tot, ax, i) => {
+      const yax = y.shape[i];
+      if (ax > yax)
+        throw new Error(`Index ${ax} out of bounds for length ${yax}`);
+      return tot * yax + ax;
+    });
+    c.data[i] = y.data[d];
+  }
+  return c;
+}
+function enclose(y: Val) {
+  return A([], [y]);
+}
 
 function over(x: Val, y: Val) {
   if (x.kind !== "function" || y.kind !== "function")
@@ -348,9 +404,12 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   len: length,
   sha: shape,
   fla: flat,
+  enc: enclose,
   par: pair,
   cat,
   res: reshape,
+  sel: select,
+  pic: pick,
   bac: backwards,
   slf: self,
   eac: mEach,

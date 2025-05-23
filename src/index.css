@@ -21,15 +21,15 @@ body {
   grid-area: 1 / 1 / 2 / 2;
 }
 
-/* @font-face {
+@font-face {
   font-family: Uiua386;
   src: url("/Uiua386.ttf") format("truetype");
-} */
-@font-face {
+}
+/* @font-face {
   font-family: TinyAPL386;
   src: url("/TinyAPL386.ttf") format("truetype");
-}
+} */
 @theme {
-  --font-mono: TinyAPL386, /*Uiua386,*/ monospace;
+  --font-mono: TinyAPL386, Uiua386, monospace;
 }
 @custom-variant hocus (&:hover, &:focus);
