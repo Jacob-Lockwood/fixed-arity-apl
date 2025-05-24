@@ -186,7 +186,7 @@ export function Repl() {
             </span>
             <Show when={selectedGlyph() === i}>
               <p class="absolute z-10 w-max rounded-sm rounded-tl-none bg-emerald-800 p-1 text-sm">
-                alias: {alias} <br /> {data.name} <br /> {data.kind}
+                {data.name} <br /> alias: {alias} <br /> {data.kind}
               </p>
             </Show>
           </button>

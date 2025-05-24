@@ -12,6 +12,10 @@ export const F = (arity: number, data: (...v: Val[]) => Val) =>
     data,
   }) satisfies Val;
 export const N = (data: number): Val => ({ kind: "number", data });
+export const C = (data: string): Val => ({
+  kind: "character",
+  data: data.codePointAt(0)!,
+});
 export const A = (shape: number[], data: Val[]) =>
   ({
     kind: "array",
@@ -125,8 +129,10 @@ function add(x: Val, y: Val): Val {
 }
 function sub(x: Val, y: Val): Val {
   if (x.kind === "array" || y.kind === "array") return each(sub, x, y);
+  if (x.kind === "character" && y.kind === "character")
+    return N(x.data - y.data);
   if (y.kind !== "number")
-    throw new Error(`Cannot subtract non-number from ${x.kind}`);
+    throw new Error(`Cannot subtract ${y.kind} from ${x.kind}`);
   if (x.kind === "function") throw new Error(`Cannot subtract a function`);
   return { kind: x.kind, data: x.data - y.data };
 }
@@ -140,7 +146,20 @@ function mod(x: Val, y: Val): Val {
   if (x.kind === "array" || y.kind === "array") return each(mod, x, y);
   if (x.kind !== "number" || y.kind !== "number")
     throw new Error(`Cannot mod ${x.kind} and ${y.kind}`);
-  return N(x.data >= 0 ? x.data % y.data : y.data + (x.data % y.data));
+  return N(y.data >= 0 ? y.data % x.data : x.data + (y.data % x.data));
+}
+function abs(y: Val): Val {
+  if (y.kind === "array") return each(abs, y);
+  if (y.kind === "character")
+    return C(String.fromCodePoint(y.data).toUpperCase());
+  if (y.kind === "number") return N(Math.abs(y.data));
+  throw new Error(`Cannot take absolute value of ${y.kind}`);
+}
+function sqr(y: Val): Val {
+  if (y.kind === "array") return each(sqr, y);
+  if (y.kind !== "number")
+    throw new Error(`Cannot take square root of ${y.kind}`);
+  return N(Math.sqrt(y.data));
 }
 function div(x: Val, y: Val) {
   if (x.kind === "array" || y.kind === "array") return each(div, x, y);
@@ -248,7 +267,7 @@ function self(y: Val) {
     throw new Error("Operand to self must be a function");
   return F(1, (v) => y.data(v, v));
 }
-export function jot(x: Val, y: Val) {
+function jot(x: Val, y: Val) {
   if (x.kind !== "function") {
     if (y.kind !== "function")
       throw new Error("Cannot compose two non-functions");
@@ -402,6 +421,8 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   flo: floor,
   rou: round,
   cei: ceil,
+  abs,
+  sqr,
   mat: fMatch,
   nmt: noMatch,
   len: length,
