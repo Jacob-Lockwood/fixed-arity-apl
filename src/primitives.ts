@@ -192,8 +192,27 @@ function not(y: Val) {
   if (y.kind !== "number") throw new Error(`Cannot take NOT of ${y.kind}`);
   return N(1 - y.data);
 }
+function sign(y: Val) {
+  if (y.kind === "array") return each(sign, y);
+  if (y.kind === "number") return N(Math.sign(y.data));
+  if (y.kind === "character") {
+    const str = String.fromCodePoint(y.data);
+    const up = str.toUpperCase();
+    const lw = str.toLowerCase();
+    return N(up === lw ? 0 : str === up ? 1 : -1);
+  }
+  throw new Error(`Cannot take sign of ${y.kind}`);
+}
 function ng(y: Val) {
-  return sub(N(0), y);
+  if (y.kind === "array") return each(ng, y);
+  if (y.kind === "number") return sub(N(0), y);
+  if (y.kind === "character") {
+    const str = String.fromCodePoint(y.data);
+    const up = str.toUpperCase();
+    const lw = str.toLowerCase();
+    return C(str === up ? lw : up);
+  }
+  throw new Error(`Cannot negate ${y.kind}`);
 }
 function ne(x: Val, y: Val) {
   return not(eq(x, y));
@@ -421,6 +440,7 @@ export const primitives: Record<PrimitiveName, (...v: Val[]) => Val> = {
   flo: floor,
   rou: round,
   cei: ceil,
+  sig: sign,
   abs,
   sqr,
   mat: fMatch,

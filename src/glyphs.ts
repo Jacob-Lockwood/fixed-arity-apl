@@ -8,6 +8,7 @@ export const glyphs = {
   les: { name: "less than", glyph: "<", kind: "dyadic function" },
   lte: { name: "less or equal", glyph: "≤", kind: "dyadic function" },
   ng: { name: "negate", glyph: "¯", kind: "monadic function" },
+  sig: { name: "sign", glyph: "±", kind: "monadic function" },
   abs: { name: "absolute value", glyph: "⌵", kind: "monadic function" },
   sqr: { name: "square root", glyph: "√", kind: "monadic function" },
   flo: { name: "floor", glyph: "⌊", kind: "monadic function" },
