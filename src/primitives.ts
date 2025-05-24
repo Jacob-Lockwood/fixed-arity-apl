@@ -340,9 +340,11 @@ function reshape(x: Val, y: Val) {
   } else if (
     x.kind === "array" &&
     x.shape.length === 1 &&
-    x.data.every((v) => v.kind === "number")
+    x.data.every(
+      (v) => v.kind === "number" && v.data >= 0 && Number.isInteger(v.data),
+    )
   ) {
-    sh.push(...x.data.map((v) => v.data));
+    sh.push(...x.data.map((v) => v.data as number));
   } else throw new Error("Left argument to reshape must be a valid shape");
   const data = y.kind === "array" ? y.data : [y];
   if (data.length === 0) throw new Error("Cannot reshape empty array");
