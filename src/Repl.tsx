@@ -55,6 +55,8 @@ export function Repl() {
   const [results, setResults] = createSignal<Result[]>([]);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [selectedGlyph, setSelectedGlyph] = createSignal(-1);
+  const [unsubmitted, setUnsubmitted] = createSignal("");
+  const [historyIdx, setHistoryIdx] = createSignal(-1);
 
   const visitor = new Visitor();
   const process = (source: string) => {
@@ -117,15 +119,16 @@ export function Repl() {
               <input type="checkbox" name="clear" id="clear" />
             </div>
           </div>
-          <ul class="flex h-full flex-col-reverse overflow-scroll">
+          <ul class="flex h-full flex-col-reverse overflow-scroll text-lg">
             <For each={results()}>
               {(result) => (
                 <li>
                   <pre
                     class="min-w-max bg-teal-900/20 pl-[8ch] hover:bg-teal-900/50"
-                    onClick={(e) =>
-                      (textarea.value ||= e.currentTarget.textContent ?? "")
-                    }
+                    onClick={(e) => {
+                      textarea.parentElement!.dataset.value = textarea.value ||=
+                        e.currentTarget.textContent ?? "";
+                    }}
                   >
                     <code>
                       {result.tokens ? (
@@ -145,7 +148,10 @@ export function Repl() {
             </For>
           </ul>
         </div>
-        <div class="-m-2 mt-auto grid overflow-x-scroll p-2" id="wrapper">
+        <div
+          class="-m-2 mt-auto grid overflow-x-scroll p-2 text-lg"
+          id="wrapper"
+        >
           <textarea
             id="code-input"
             ref={textarea}
@@ -158,7 +164,34 @@ export function Repl() {
                 process(textarea.value);
                 // todo: make clearing the textarea a configurable option
                 textarea.parentElement!.dataset.value = textarea.value = "";
+                return;
               }
+              if (!ev.altKey || !"ArrowUp,ArrowDown".includes(ev.key)) {
+                setHistoryIdx(-1);
+                setUnsubmitted(textarea.value);
+                return;
+              }
+              ev.preventDefault();
+              const up = ev.key === "ArrowUp";
+              if (historyIdx() === -1) {
+                setUnsubmitted(textarea.value);
+                if (up) setHistoryIdx(0);
+                else return;
+              } else {
+                if (up) setHistoryIdx((i) => Math.min(i + 1, results().length));
+                else {
+                  if (historyIdx() === 0) {
+                    setHistoryIdx(-1);
+                    textarea.parentElement!.dataset.value = textarea.value =
+                      unsubmitted();
+                    return;
+                  }
+                  setHistoryIdx((i) => i - 1);
+                }
+              }
+              const r = results()[historyIdx()];
+              const txt = r.tokens?.map((z) => z.image).join("") ?? r.source;
+              textarea.parentElement!.dataset.value = textarea.value = txt;
             }}
             onInput={() =>
               (textarea.parentElement!.dataset.value = textarea.value)
