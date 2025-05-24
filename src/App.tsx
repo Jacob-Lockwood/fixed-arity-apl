@@ -15,10 +15,12 @@ export default function App() {
           <img
             class="mx-auto h-30 w-30"
             src="/APL_FIX.svg"
-            alt="FIX APL logo."
+            alt="FIXAPL logo."
           />
-          <h1 class="text-center text-2xl text-emerald-200">Fixed-arity APL</h1>
-          <p class="mb-10 text-center italic">
+          <h1 class="mt-2 text-center text-3xl tracking-wider text-emerald-200">
+            FIXAPL
+          </h1>
+          <p class="mb-10 text-center text-lg italic">
             A simple APL derivative, built on fixed-arity functions
           </p>
           <details>
@@ -153,7 +155,7 @@ export default function App() {
           .
         </p>
         <p>
-          The FIX APL logo was modified from the official{" "}
+          The FIXAPL logo was modified from the official{" "}
           <a
             href="https://aplwiki.com/wiki/File:APL_logo.png"
             class="underline"
