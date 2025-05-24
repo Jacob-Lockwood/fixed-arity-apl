@@ -60,7 +60,7 @@ export function Repl() {
 
   const visitor = new Visitor();
   const process = (source: string) => {
-    let tokens: Token[] = [];
+    let tokens: Token[] | null = null;
     let output: string | null = null;
     let error: string | null = null;
     try {
@@ -119,7 +119,7 @@ export function Repl() {
               <input type="checkbox" name="clear" id="clear" />
             </div>
           </div>
-          <ul class="flex h-full flex-col-reverse overflow-scroll text-lg">
+          <ul class="flex h-full flex-col-reverse overflow-scroll pb-5 text-lg">
             <For each={results()}>
               {(result) => (
                 <li>
