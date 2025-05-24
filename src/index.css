@@ -10,7 +10,7 @@ body {
 }
 #wrapper::after {
   content: attr(data-value) " ";
-  white-space: pre-wrap;
+  white-space: pre;
   visibility: hidden;
 }
 #code-input,

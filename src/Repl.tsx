@@ -156,7 +156,7 @@ export function Repl() {
             id="code-input"
             ref={textarea}
             aria-label="REPL input line"
-            class="resize-none overflow-hidden rounded-sm ring-1 ring-green-500 focus:ring-2 focus:outline-0"
+            class="resize-none overflow-hidden rounded-sm whitespace-pre ring-1 ring-green-500 focus:ring-2 focus:outline-0"
             rows="1"
             onKeyDown={(ev) => {
               if (ev.key === "Enter" && !ev.shiftKey) {
