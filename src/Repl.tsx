@@ -66,13 +66,8 @@ export function Repl() {
     try {
       tokens = lex(source);
       const t = tokens.filter((x) => !"whitespace,comment".includes(x.kind));
-      const p = new Parser(t);
-      const e = p.expression();
-      if (e) {
-        output = display(visitor.visit(e));
-      } else {
-        error = "Empty input";
-      }
+      const p = new Parser(t).program();
+      output = p.map((e) => display(visitor.visit(e))).join("\n");
     } catch (e) {
       error = e + "";
       console.error(e);
