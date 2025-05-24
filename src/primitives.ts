@@ -335,7 +335,7 @@ function pair(x: Val, y: Val) {
 }
 function reshape(x: Val, y: Val) {
   const sh: number[] = [];
-  if (x.kind === "number") {
+  if (x.kind === "number" && x.data >= 0 && Number.isInteger(x.data)) {
     sh[0] = x.data;
   } else if (
     x.kind === "array" &&
