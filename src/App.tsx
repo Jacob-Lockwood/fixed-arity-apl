@@ -120,7 +120,7 @@ export default function App() {
         <p>
           Contribute to or view this page's source on{" "}
           <a
-            href="https://github.com/Jacob-Lockwood/fixed-arity-apl"
+            href="https://github.com/Jacob-Lockwood/fixapl"
             class="underline"
             target="_blank"
           >
