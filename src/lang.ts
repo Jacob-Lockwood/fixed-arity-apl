@@ -262,9 +262,8 @@ export class Parser {
         this.i++;
         continue;
       }
-      // TODO handle bindings
-      const e = this.expression();
-      if (!e) throw this.expected("expression", this.tok());
+      const e = this.binding() ?? this.expression();
+      if (!e) throw this.expected("statement", this.tok());
       statements.push(e);
     }
     return statements;
@@ -278,11 +277,11 @@ export class Parser {
 //* - visit value
 //* - set value
 export class Visitor {
+  private bindings = new Map<string, Val>();
   visit(node: AstNode): Val {
     if (node.kind === "number" || node.kind === "character") {
       return { kind: node.kind, data: node.value };
-    }
-    if (node.kind === "string") {
+    } else if (node.kind === "string") {
       return {
         kind: "array",
         shape: [node.value.length],
@@ -291,19 +290,15 @@ export class Visitor {
           data: c.codePointAt(0)!,
         })),
       };
-    }
-    if (node.kind === "glyph reference") {
+    } else if (node.kind === "glyph reference") {
       return F(node.arity, primitiveByGlyph(node.glyph));
-    }
-    if (node.kind === "monadic modifier") {
+    } else if (node.kind === "monadic modifier") {
       return primitiveByGlyph(node.glyph)(this.visit(node.fn));
-    }
-    if (node.kind === "dyadic modifier") {
+    } else if (node.kind === "dyadic modifier") {
       return primitiveByGlyph(node.glyph)(
         ...node.fns.map((f) => this.visit(f)),
       );
-    }
-    if (node.kind === "expression") {
+    } else if (node.kind === "expression") {
       const tines = node.values.map((n) => this.visit(n));
       if (tines.length === 1) return tines[0];
       type Cmp = (r: Val & { kind: "function" }) => Val & { kind: "function" };
@@ -343,14 +338,12 @@ export class Visitor {
           fns.push(atop(t));
         } else throw new Error("Cannot have nilad outside of fork");
       }
-    }
-    if (node.kind === "strand" || node.kind === "list") {
+    } else if (node.kind === "strand" || node.kind === "list") {
       return A(
         [node.values.length],
         node.values.map((v) => this.visit(v)),
       );
-    }
-    if (node.kind === "array") {
+    } else if (node.kind === "array") {
       if (node.values.length === 0) {
         throw new Error("Square brackets may not be empty");
       }
@@ -366,9 +359,16 @@ export class Visitor {
         return A([v.length], v);
       }
       throw new Error("Elements of array literal must have matching shapes");
+    } else if (node.kind === "reference") {
+      if (this.bindings.has(node.name)) return this.bindings.get(node.name)!;
+      throw new Error(`Unrecognized identifier '${node.name}'`);
+    } else if (node.kind === "binding") {
+      const v = this.visit(node.value);
+      this.bindings.set(node.name, v);
+      return v;
     }
     throw new Error(
-      "Error in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2),
+      "in 'visit' -- node: " + "\n" + JSON.stringify(node, null, 2),
     );
   }
 }
