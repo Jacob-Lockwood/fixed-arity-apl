@@ -279,11 +279,13 @@ function backwards(y: Val) {
   if (y.kind !== "function")
     throw new Error("Operand to backwards must be a function");
   if (y.arity === 2) return F(2, (g, h) => y.data(h, g));
-  return y;
+  throw new Error("Operand to backwards must be dyadic");
+  // return y;
 }
 function self(y: Val) {
   if (y.kind !== "function")
     throw new Error("Operand to self must be a function");
+  if (y.arity !== 2) throw new Error("Operand to self must be dyadic");
   return F(1, (v) => y.data(v, v));
 }
 function jot(x: Val, y: Val) {

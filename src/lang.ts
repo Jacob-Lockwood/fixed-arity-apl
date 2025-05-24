@@ -7,7 +7,7 @@ const basic = {
   number: /^\d+(\.\d+)?/,
   comment: /^#.*/m,
   space: /^ +/,
-  newline: /^$/m,
+  newline: /^\n/,
   other: /^[^'"A-Z# \n]+/,
 };
 type SyntaxName = {
@@ -96,16 +96,12 @@ export class Parser {
   error(msg: string) {
     return new Error(`Parsing error on line ${this.line}: ` + msg);
   }
-  expected(exp: string, act?: Token) {
+  expected(exp: string, act: Token | undefined) {
     const got = act ? `${act.kind}: ${act.image}` : "end of input";
     return this.error(`expected ${exp} but got ${got}`);
   }
   tok(): Token | undefined {
     let tok = this.tokens[this.i];
-    while (tok?.kind === "newline") {
-      this.i++;
-      tok = this.tokens[this.i];
-    }
     if (tok) this.line = tok.line;
     return tok;
   }
@@ -117,10 +113,10 @@ export class Parser {
       return { kind: "number", value: Number(tok.image.replace("¯", "-")) };
     } else if (tok.kind === "string") {
       this.i++;
-      return { kind: "string", value: eval(tok.image) };
+      return { kind: "string", value: eval(tok.image.replaceAll("\n", "\\n")) };
     } else if (tok.kind === "character") {
       this.i++;
-      const str: string = eval(tok.image);
+      const str: string = eval(tok.image.replaceAll("\n", "\\n"));
       if (str.length !== 1)
         throw this.error(
           `character literal must be one character: ${tok.image}`,
@@ -162,6 +158,10 @@ export class Parser {
     this.i++;
     const values: AstNode[] = [];
     let m = this.expression();
+    if (!m) {
+      const t = this.tok();
+      if (t?.kind !== "close list") throw this.expected("expression or ⟩", t);
+    }
     while (m) {
       values.push(m);
       const t = this.tok();
@@ -169,10 +169,10 @@ export class Parser {
         this.i++;
         break;
       }
-      if (t?.kind !== "separator") throw this.expected("⟩ or ⋄", t);
+      if (t?.kind !== "separator") throw this.expected("⟩ or ,", t);
       this.i++;
       m = this.expression();
-      if (!m) throw this.error(`list cannot end with a diamond`);
+      if (!m) throw this.expected("expression after separator", this.tok());
     }
     return { kind: "list", values };
   }
@@ -180,14 +180,15 @@ export class Parser {
     this.i++;
     const values: AstNode[] = [];
     let m = this.expression();
+    if (!m) throw this.expected("expression in array literal", this.tok());
     while (m) {
       values.push(m);
       const t = this.tok();
       this.i++;
       if (t?.kind === "close array") break;
-      if (t?.kind !== "separator") throw this.expected("] or ⋄", t);
+      if (t?.kind !== "separator") throw this.expected("] or ,", t);
       m = this.expression();
-      if (!m) throw this.error("array cannot end with a separator");
+      if (!m) throw this.expected("expression after separator", this.tok());
     }
     return { kind: "array", values };
   }
@@ -256,15 +257,15 @@ export class Parser {
   }
   program() {
     const statements: AstNode[] = [];
-    while (this.i < this.tokens.length) {
-      const b = this.binding();
-      if (b) {
-        statements.push(b);
-      } else {
-        const e = this.expression();
-        if (!e) return statements;
-        statements.push(e);
+    while (this.tok()) {
+      if (this.tok()?.kind === "newline") {
+        this.i++;
+        continue;
       }
+      // TODO handle bindings
+      const e = this.expression();
+      if (!e) throw this.expected("expression", this.tok());
+      statements.push(e);
     }
     return statements;
   }
