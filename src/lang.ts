@@ -91,13 +91,22 @@ type AstNode =
 
 export class Parser {
   private i = 0;
+  private line = 1;
   constructor(private tokens: Token[]) {}
+  error(msg: string) {
+    return new Error(`Parsing error on line ${this.line}: ` + msg);
+  }
+  expected(exp: string, act?: Token) {
+    const got = act ? `${act.kind}: ${act.image}` : "end of input";
+    return this.error(`expected ${exp} but got ${got}`);
+  }
   tok(): Token | undefined {
     let tok = this.tokens[this.i];
     while (tok?.kind === "newline") {
       this.i++;
       tok = this.tokens[this.i];
     }
+    if (tok) this.line = tok.line;
     return tok;
   }
   primary(): AstNode | void {
@@ -113,9 +122,8 @@ export class Parser {
       this.i++;
       const str: string = eval(tok.image);
       if (str.length !== 1)
-        throw new Error(
-          `Parsing error on line ${tok.line} - character literal must be one ` +
-            `character: ${tok.image}`,
+        throw this.error(
+          `character literal must be one character: ${tok.image}`,
         );
       return {
         kind: "character",
@@ -142,13 +150,10 @@ export class Parser {
   parenthesized() {
     this.i++;
     const expr = this.expression();
-    if (!expr) throw new Error("Parentheses may not be empty");
-    const tok = this.tokens[this.i];
+    if (!expr) throw this.error("Parentheses may not be empty");
+    const tok = this.tok();
     if (tok?.kind !== "close parenthesis") {
-      throw new Error(
-        `Parsing error on line ${tok.line} - expected closing parenthesis ` +
-          `but got ${tok.kind}: ${tok.image}`,
-      );
+      throw this.expected("closing parenthesis", tok);
     }
     this.i++;
     return expr;
@@ -164,18 +169,10 @@ export class Parser {
         this.i++;
         break;
       }
-      if (t?.kind !== "separator") {
-        throw new Error(
-          `Parsing error on line ${t?.line} - expected ⟩ or ⋄ but got ${t?.kind}`,
-        );
-      }
+      if (t?.kind !== "separator") throw this.expected("⟩ or ⋄", t);
       this.i++;
       m = this.expression();
-      if (!m) {
-        throw new Error(
-          `Parsing error on line ${t.line} - list cannot end with a diamond`,
-        );
-      }
+      if (!m) throw this.error(`list cannot end with a diamond`);
     }
     return { kind: "list", values };
   }
@@ -186,22 +183,11 @@ export class Parser {
     while (m) {
       values.push(m);
       const t = this.tok();
-      if (t?.kind === "close array") {
-        this.i++;
-        break;
-      }
-      if (t?.kind !== "separator") {
-        throw new Error(
-          `Parsing error on line ${t?.line} - expected ] or ⋄ but got ${t?.kind}`,
-        );
-      }
       this.i++;
+      if (t?.kind === "close array") break;
+      if (t?.kind !== "separator") throw this.expected("] or ⋄", t);
       m = this.expression();
-      if (!m) {
-        throw new Error(
-          `Parsing error on line ${t.line} - array cannot end with a separator`,
-        );
-      }
+      if (!m) throw this.error("array cannot end with a separator");
     }
     return { kind: "array", values };
   }
@@ -223,12 +209,8 @@ export class Parser {
       if (tok?.kind !== "dyadic modifier") return p;
       this.i++;
       const r = this.primary();
-      if (!r) {
-        throw new Error(
-          `Parsing error on line ${tok.line} - expected right argument to ` +
-            `dyadic modifier but got ${tok.kind}: ${tok.image}`,
-        );
-      }
+      if (!r)
+        throw this.expected("right argument to dyadic modifier", this.tok());
       p = { kind: "dyadic modifier", glyph: tok.image, fns: [p!, r] };
     }
   }
@@ -242,9 +224,7 @@ export class Parser {
       this.i++;
       m = this.modifierExpression();
       if (!m) {
-        throw new Error(
-          `Parsing error on line ${t.line} - strand cannot end with a ligature`,
-        );
+        throw this.error("strand cannot end with a ligature");
       }
     }
     if (values.length === 0) return;
