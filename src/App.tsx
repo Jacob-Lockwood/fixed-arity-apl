@@ -12,11 +12,7 @@ export default function App() {
     <div class="mx-auto flex min-h-screen flex-col bg-emerald-950/70 p-5 text-emerald-300 selection:bg-green-800 sm:p-10 md:w-3/4 lg:py-20">
       <div class="lg:flex">
         <div class="mx-auto mb-10 max-w-prose lg:w-2/5">
-          <img
-            class="mx-auto h-30 w-30"
-            src="/APL_FIX.svg"
-            alt="FIXAPL logo."
-          />
+          <img class="mx-auto h-30 w-30" src="/FIXAPL.svg" alt="FIXAPL logo." />
           <h1 class="mt-2 text-center text-3xl tracking-wider text-emerald-200">
             FIXAPL
           </h1>
